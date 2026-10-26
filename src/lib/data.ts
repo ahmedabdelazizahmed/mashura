@@ -16,12 +16,12 @@ import type {
 } from '@/types/data'
 
 export const expert: Expert = {
-  name: 'أحمد فتحي',
-  title: 'مستشار بيزنس ومشاريع',
-  years: 12,
-  sessions: 940,
-  rating: 4.9,
-  bio: 'قضيت ١٢ سنة بين تأسيس شركات وتسعير منتجات وبناء فرق مبيعات. مشورة هي مكان أساعدك فيه بنفسي، مكالمة واحدة في المرة.',
+  name: 'مستشار تجريبي',
+  title: 'مستشار أعمال',
+  years: 0,
+  sessions: 0,
+  rating: 0,
+  bio: 'هذا مشروع تجريبي لعرض فكرة نظام حجز الاستشارات. بيانات المستشار وأسعاره قابلة للتعديل بالكامل من لوحة الإدارة.',
 }
 
 // Three fixed consultation types. Admin has full CRUD over types, methods (video/audio),
@@ -117,11 +117,10 @@ export const leads: Lead[] = [
 // Admin dashboard staff (Ahmed's team) — NOT client sub-users.
 // Client is single-user by design; this list drives /admin/employees only.
 export const employees: TeamMember[] = [
-  { id: 'e1', name: 'أحمد فتحي', email: 'ahmed@mashura.eg', phone: '01000000001', role: 'owner', status: 'نشط', joinedAt: '2026-01-01', lastActive: 'الآن', bookings: 0 },
-  { id: 'e2', name: 'سلمى أحمد', email: 'salma@mashura.eg', phone: '01099988877', role: 'admin', status: 'نشط', joinedAt: '2026-02-15', lastActive: 'قبل ساعة', bookings: 0 },
-  { id: 'e3', name: 'يوسف كمال', email: 'youssef@mashura.eg', phone: '01055566677', role: 'reception', status: 'نشط', joinedAt: '2026-03-10', lastActive: 'أمس', bookings: 0 },
-  { id: 'e4', name: 'هبة سمير', email: 'heba@mashura.eg', phone: '', role: 'reception', status: 'مدعوّ', joinedAt: '2026-09-01', lastActive: '', bookings: 0 },
-  { id: 'e5', name: 'كريم ناصر', email: 'karim@mashura.eg', phone: '01088877766', role: 'viewer', status: 'نشط', joinedAt: '2026-04-20', lastActive: 'قبل ٣ أيام', bookings: 0 },
+  { id: 'e1', name: 'مالك النظام (مثال)', email: 'owner@example.com', phone: '', role: 'owner', status: 'نشط', joinedAt: '2026-01-01', lastActive: 'الآن', bookings: 0 },
+  { id: 'e2', name: 'مدير (مثال)', email: 'admin@example.com', phone: '', role: 'admin', status: 'نشط', joinedAt: '2026-01-01', lastActive: 'قبل ساعة', bookings: 0 },
+  { id: 'e3', name: 'استقبال (مثال)', email: 'reception@example.com', phone: '', role: 'reception', status: 'نشط', joinedAt: '2026-01-01', lastActive: 'أمس', bookings: 0 },
+  { id: 'e4', name: 'مشاهد (مثال)', email: 'viewer@example.com', phone: '', role: 'viewer', status: 'مدعوّ', joinedAt: '2026-01-01', lastActive: '', bookings: 0 },
 ]
 // Legacy alias — external callers still import `members`.
 export const members = employees

@@ -27,10 +27,11 @@ export default function ClientApp() {
   const { data: typeRows } = useTypes()
   const types = (typeRows ?? []).map(toConsultationType)
 
-  const [view, setView] = useState<View>('home')
+  const [view, setView] = useState<View>(params.get('view') === 'account' ? 'account' : 'home')
   const [draft, setDraft] = useState<BookingDraft>(emptyDraft)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [bookingRef, setBookingRef] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Once types load, honor a `?type=<slug>` deep link (landing/home) by
@@ -68,32 +69,23 @@ export default function ClientApp() {
     setSubmitting(true)
     setError(null)
     try {
-      // Look up the real DB type by slug (mock id happens to match the slug).
+      // The server looks up the price and locks the slots; we only send choices.
       const dbType = await api.getTypeBySlug(draft.type.id)
-      if (!dbType) throw new Error('نوع الاستشارة مش موجود في الداتابيز — طبّق الـmigration.')
-      const dur = dbType.durations.find((d) => d.minutes === draft.duration!)
-      if (!dur) throw new Error('المدة دي مش متاحة للنوع ده.')
-      const price = dur.prices[draft.mode!] ?? 0
-
+      if (!dbType) throw new Error('type_not_found')
       const booking = await api.createBooking({
-        clientId: profile.id,
         typeId: dbType.id,
-        durationOptionId: dur.id,
-        mode: draft.mode!,
-        startsAt: draft.startsAt,   // real slot picked from availability_slots
-        minutes: draft.duration!,
-        priceAmount: price,
-        topic: draft.topic || undefined,
+        minutes: draft.duration,
+        mode: draft.mode,
+        startsAt: draft.startsAt,
+        topic: draft.topic.trim() || undefined,
+        paymentMethod: draft.pm,
       })
-
-      // Create a matching payment row (status pending — real gateway later).
-      await api.createPayment(booking.id, price, draft.pm === 'wallet' ? 'wallet' : 'card')
-
+      setBookingRef(booking.ref)
       setView('done')
-      setToast('الحجز اتأكّد')
+      setToast('وصلنا طلب الحجز')
       setParams({}, { replace: true })
-    } catch (e: any) {
-      setError(e?.message ?? 'حصل خطأ. جرّب تاني.')
+    } catch (e) {
+      setError(api.friendlyError(e))
     } finally {
       setSubmitting(false)
     }
@@ -132,13 +124,13 @@ export default function ClientApp() {
         {(ORDER as readonly string[]).includes(view) && (
           <BookingFlow step={view as Step} draft={draft} set={set} next={next} back={back} submitting={submitting} onConfirm={confirm} types={types} />
         )}
-        {view === 'done' && <ConfirmationView draft={draft} onDone={() => setView('account')} />}
+        {view === 'done' && <ConfirmationView draft={draft} bookingRef={bookingRef} onDone={() => setView('account')} />}
         {view === 'account' && <Account onBook={() => startBooking(null)} />}
       </ClientShell>
 
       {toast && (
         <div style={{ position: 'fixed', bottom: 24, insetInlineStart: 24, zIndex: 80 }}>
-          <Toast tone="success" title={toast} description="بعتنا لك التفاصيل على الإيميل والواتساب." onClose={() => setToast(null)} />
+          <Toast tone="success" title={toast} description="هتلاقي الحجز في حسابك." onClose={() => setToast(null)} />
         </div>
       )}
 

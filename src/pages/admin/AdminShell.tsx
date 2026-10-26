@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon, IconButton } from '@/lib/ui'
-import { expert } from '@/lib/data'
 import { useAuth } from '@/lib/auth'
 
 export type AdminView =
@@ -39,12 +38,12 @@ interface Props { view: AdminView; onNav: (v: AdminView) => void; children: Reac
 export default function AdminShell({ view, onNav, children }: Props) {
   const nav = useNavigate()
   const { profile, signOut } = useAuth()
-  const displayName = profile?.name ?? expert.name
+  const displayName = profile?.name ?? '—'
   const initial = (displayName[0] ?? 'أ').toUpperCase()
   const doLogout = async () => { await signOut(); nav('/', { replace: true }) }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '244px 1fr', minHeight: '100vh' }}>
-      <aside style={{ background: 'var(--surface-inverse)', padding: 'var(--space-8) var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-9)' }}>
+    <div className="adm-shell">
+      <aside className="adm-side" style={{ background: 'var(--surface-inverse)', padding: 'var(--space-8) var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-9)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', paddingInlineStart: 'var(--space-4)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--weight-black)', fontSize: 24, color: 'var(--sand-050)' }}>مشورة</span>
@@ -86,14 +85,14 @@ export default function AdminShell({ view, onNav, children }: Props) {
           <IconButton icon="log-out" label="خروج" size="sm" style={{ color: 'var(--pine-200)' }} onClick={doLogout} />
         </div>
       </aside>
-      <main style={{ background: 'var(--surface-page)', overflow: 'auto' }}>{children}</main>
+      <main style={{ background: 'var(--sand-100)', overflow: 'auto', minWidth: 0 }}>{children}</main>
     </div>
   )
 }
 
 export function PageHead({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-8)', marginBottom: 'var(--space-9)' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-8)', marginBottom: 'var(--space-9)', flexWrap: 'wrap' }}>
       <div>
         <h1 style={{ fontSize: 'var(--size-h1)' }}>{title}</h1>
         {sub && <p style={{ color: 'var(--text-muted)', marginTop: 'var(--space-4)' }}>{sub}</p>}

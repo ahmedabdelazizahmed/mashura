@@ -50,7 +50,7 @@ export async function getTypeBySlug(slug: string): Promise<TypeWithDurations | n
 export async function getOpenSlots(from: Date, to: Date) {
   const { data, error } = await supabase
     .from('availability_slots')
-    .select('*')
+    .select('id, starts_at, duration_minutes')
     .gte('starts_at', from.toISOString())
     .lt('starts_at', to.toISOString())
     .eq('is_blocked', false)
@@ -61,90 +61,109 @@ export async function getOpenSlots(from: Date, to: Date) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Bookings — client-side
+// Bookings — every write goes through a server-side function (RPC) that checks
+// the price, the slots and the caller's permissions. Never write to `bookings`
+// or `payments` directly: the database refuses it.
 // ────────────────────────────────────────────────────────────────────────────
 export interface NewBookingInput {
-  clientId: string
   typeId: string
-  durationOptionId: string
+  minutes: number
   mode: Mode
   startsAt: string          // ISO
-  minutes: number
-  priceAmount: number
   topic?: string
+  paymentMethod?: 'cash' | 'wallet'
+}
+
+/** Error codes raised by the database functions, in Egyptian Arabic. */
+const RPC_ERRORS: Record<string, string> = {
+  not_authenticated: 'سجّل دخولك الأول.',
+  slot_unavailable: 'الميعاد ده اتحجز أو مش متاح. اختار ميعاد تاني.',
+  slot_too_soon: 'لازم الحجز يكون قبل الميعاد بساعة على الأقل.',
+  too_many_pending: 'عندك حجوزات كتير لسه مستنية التأكيد. استنى لحد ما تتأكد.',
+  type_not_found: 'نوع الاستشارة مش متاح.',
+  mode_not_allowed: 'الطريقة دي مش متاحة للنوع ده.',
+  duration_not_allowed: 'المدة دي مش متاحة للنوع ده.',
+  price_not_set: 'السعر مش محدد لاختيارك.',
+  invalid_payment_method: 'طريقة الدفع مش صحيحة.',
+  booking_not_found: 'الحجز مش موجود.',
+  not_allowed: 'مش مسموحلك بالإجراء ده.',
+  invalid_status: 'مينفعش تعمل ده في حالة الحجز الحالية.',
+  invalid_transition: 'مينفعش تنقل الحجز للحالة دي.',
+  already_started: 'الجلسة بدأت خلاص ومينفعش تتلغي.',
+  invalid_url: 'الرابط لازم يبدأ بـ https://',
+  rate_limited: 'محاولات كتير. جرّب بعد شوية.',
+  invalid_name: 'اكتب اسمك صح.',
+  invalid_email: 'الإيميل مش صحيح.',
+  invalid_phone: 'رقم التليفون مش صحيح.',
+  cannot_change_self: 'مينفعش تغيّر صلاحيتك بنفسك.',
+  owner_only: 'الصلاحية دي للمالك بس.',
+  last_owner: 'لازم يفضل مالك واحد على الأقل.',
+  user_not_found: 'مفيش مستخدم بالإيميل ده.',
+  slot_booked: 'الميعاد ده محجوز.',
+  invalid_range: 'الفترة المطلوبة مش صحيحة.',
+}
+
+/** Turn a Supabase/Postgres error into a short Arabic message. */
+export function friendlyError(e: unknown): string {
+  const msg = String((e as any)?.message ?? e ?? '')
+  for (const code of Object.keys(RPC_ERRORS)) if (msg.includes(code)) return RPC_ERRORS[code]
+  if (/Failed to fetch|NetworkError|fetch/i.test(msg)) return 'مفيش اتصال بالسيرفر. اتأكد من النت وجرّب تاني.'
+  return 'حصل خطأ غير متوقع. جرّب تاني.'
 }
 
 export async function createBooking(input: NewBookingInput) {
-  const { data, error } = await supabase
-    .from('bookings')
-    .insert({
-      client_id: input.clientId,
-      type_id: input.typeId,
-      duration_option_id: input.durationOptionId,
-      mode: input.mode,
-      starts_at: input.startsAt,
-      minutes: input.minutes,
-      price_amount: input.priceAmount,
-      status: 'pending',
-      topic: input.topic ?? null,
-    })
-    .select('*')
-    .single()
+  const { data, error } = await supabase.rpc('create_booking', {
+    p_type_id: input.typeId,
+    p_minutes: input.minutes,
+    p_mode: input.mode,
+    p_starts_at: input.startsAt,
+    p_topic: input.topic ?? null,
+    p_payment_method: input.paymentMethod ?? 'cash',
+  })
   if (error) throw error
-  return data
+  return data as T['bookings']['Row']
 }
 
 export async function getMyBookings() {
   const { data, error } = await supabase
     .from('bookings')
-    .select('*, consultation_types(title, slug, category)')
+    .select('*, consultation_types(title, slug, category), payments(id, status, method, amount, invoice_no, paid_at)')
     .order('starts_at', { ascending: false })
   if (error) throw error
   return data ?? []
 }
 
 export async function cancelBooking(id: string) {
-  const { error } = await supabase
-    .from('bookings')
-    .update({ status: 'cancelled' })
-    .eq('id', id)
+  const { error } = await supabase.rpc('cancel_booking', { p_booking_id: id })
   if (error) throw error
 }
 
-export async function updateBookingStatus(id: string, status: BookingStatus) {
-  const { error } = await supabase
-    .from('bookings')
-    .update({ status })
-    .eq('id', id)
+export async function setBookingStatus(id: string, status: BookingStatus | null, meetingUrl?: string | null, location?: string | null) {
+  const { error } = await supabase.rpc('set_booking_status', {
+    p_booking_id: id,
+    p_status: status,
+    p_meeting_url: meetingUrl ?? null,
+    p_location: location ?? null,
+  })
   if (error) throw error
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Payments (client + admin)
+// Payments — recorded by staff (cash / wallet are manual until a gateway exists)
 // ────────────────────────────────────────────────────────────────────────────
-export async function createPayment(bookingId: string, amount: number, method: 'card' | 'wallet' | 'cash') {
-  const { data, error } = await supabase
-    .from('payments')
-    .insert({ booking_id: bookingId, amount, method, status: 'pending' })
-    .select('*')
-    .single()
-  if (error) throw error
-  return data
-}
-
-export async function markPaymentPaid(paymentId: string, providerRef?: string) {
-  const { error } = await supabase
-    .from('payments')
-    .update({ status: 'paid', paid_at: new Date().toISOString(), provider_ref: providerRef ?? null })
-    .eq('id', paymentId)
+export async function setPaymentStatus(paymentId: string, status: 'paid' | 'failed' | 'refunded', providerRef?: string) {
+  const { error } = await supabase.rpc('set_payment_status', {
+    p_payment_id: paymentId,
+    p_status: status,
+    p_provider_ref: providerRef ?? null,
+  })
   if (error) throw error
 }
 
-export async function getPaymentsForBooking(bookingId: string) {
+export async function getAllPayments() {
   const { data, error } = await supabase
     .from('payments')
-    .select('*')
-    .eq('booking_id', bookingId)
+    .select('*, bookings(ref, starts_at, profiles!bookings_client_id_fkey(name))')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data ?? []
@@ -185,7 +204,7 @@ export async function markAllNotificationsRead() {
 export async function getAllBookings(status?: BookingStatus) {
   let q = supabase
     .from('bookings')
-    .select('*, consultation_types(title, slug), profiles!bookings_client_id_fkey(name, email)')
+    .select('*, consultation_types(title, slug), profiles!bookings_client_id_fkey(name, email, phone), payments(id, status, method, amount)')
     .order('starts_at', { ascending: false })
   if (status) q = q.eq('status', status)
   const { data, error } = await q
@@ -222,9 +241,12 @@ export async function updateLeadStatus(id: string, status: LeadStatus) {
   if (error) throw error
 }
 
-// Anonymous lead capture (from a public form — RLS allows insert with check(true)).
-export async function captureLead(input: T['leads']['Insert']) {
-  const { error } = await supabase.from('leads').insert(input)
+// Public contact form — goes through a validated function (rate-limited, de-duplicated).
+export async function captureLead(input: { name: string; email: string; phone?: string; interest?: string; source?: string }) {
+  const { error } = await supabase.rpc('capture_lead', {
+    p_name: input.name, p_email: input.email, p_phone: input.phone ?? null,
+    p_interest: input.interest ?? null, p_source: input.source ?? null,
+  })
   if (error) throw error
 }
 
@@ -275,6 +297,18 @@ export async function getAllSlots(from: Date, to: Date) {
   return data ?? []
 }
 
+export async function setSlotsBlocked(ids: string[], isBlocked: boolean) {
+  if (ids.length === 0) return
+  const { error } = await supabase.from('availability_slots').update({ is_blocked: isBlocked }).in('id', ids)
+  if (error) throw error
+}
+
+export async function getRules() {
+  const { data, error } = await supabase.from('availability_rules').select('*').eq('is_active', true).order('weekday')
+  if (error) throw error
+  return data ?? []
+}
+
 export async function toggleSlotBlocked(id: string, isBlocked: boolean) {
   const { error } = await supabase
     .from('availability_slots')
@@ -287,6 +321,24 @@ export async function createSlot(startsAt: Date, durationMinutes = 15) {
   const { error } = await supabase
     .from('availability_slots')
     .insert({ starts_at: startsAt.toISOString(), duration_minutes: durationMinutes })
+  if (error) throw error
+}
+
+/** Build 15-minute slots from the weekly availability rules (Cairo time). Admin only. */
+export async function generateSlots(from: string, to: string) {
+  const { data, error } = await supabase.rpc('generate_slots', { p_from: from, p_to: to })
+  if (error) throw error
+  return data as number
+}
+
+export async function setUserRole(email: string, role: string) {
+  const { data, error } = await supabase.rpc('set_user_role', { p_email: email, p_role: role })
+  if (error) throw error
+  return data
+}
+
+export async function updateExpert(id: string, patch: { name: string; title: string; bio: string | null }) {
+  const { error } = await supabase.from('experts').update(patch).eq('id', id)
   if (error) throw error
 }
 

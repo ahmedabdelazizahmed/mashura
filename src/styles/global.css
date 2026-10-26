@@ -1,3 +1,35 @@
 html, body, #root { margin: 0; min-height: 100vh; }
 a { color: var(--pine-700); text-decoration: none; }
 a:hover { color: var(--pine-900); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 720px) { body { font-size: 16px; } }
+
+/* Responsive helpers for the client app */
+.acct-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--space-8); align-items: start; }
+.acct-side { position: sticky; top: var(--space-9); }
+.acct-two { display: grid; grid-template-columns: 1.5fr 1fr; gap: var(--space-7); margin-top: var(--space-8); align-items: start; }
+.book-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-9); align-items: start; }
+.book-summary { position: sticky; top: var(--space-9); }
+.pad-page { max-width: 1160px; margin: 0 auto; padding: var(--space-10) var(--space-8) var(--space-13); }
+@media (max-width: 860px) {
+  .acct-grid, .acct-two, .book-grid { grid-template-columns: minmax(0, 1fr); }
+  .acct-side, .book-summary { position: static; }
+  .book-summary { order: 2; }
+  .pad-page { padding: var(--space-8) 16px var(--space-11); }
+}
+
+/* Admin layout */
+.adm-shell { display: grid; grid-template-columns: 244px minmax(0, 1fr); min-height: 100vh; }
+.adm-page { max-width: 1160px; margin: 0 auto; padding: var(--space-11); }
+.adm-two { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--space-7); margin-top: var(--space-10); align-items: start; }
+@media (max-width: 960px) {
+  .adm-shell { grid-template-columns: minmax(0, 1fr); }
+  .adm-side { position: static; flex-direction: column; padding: var(--space-6) var(--space-5) !important; gap: var(--space-6) !important; }
+  .adm-side nav { flex-direction: row !important; flex-wrap: wrap; }
+  .adm-page { padding: var(--space-8) 16px; }
+  .adm-two { grid-template-columns: minmax(0, 1fr); }
+}
+
+.role-links { margin-bottom: 24px; }
+.check { font-size: 14px; line-height: 1.7; flex-wrap: wrap; }
+.check a { font-size: inherit; color: var(--pine-700); text-decoration: underline; }

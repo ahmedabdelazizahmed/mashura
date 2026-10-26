@@ -10,10 +10,10 @@
 insert into public.experts (id, name, title, bio, years, sessions, rating)
 values (
   '11111111-1111-1111-1111-111111111111',
-  'أحمد فتحي',
-  'مستشار بيزنس ومشاريع',
-  'قضيت ١٢ سنة بين تأسيس شركات وتسعير منتجات وبناء فرق مبيعات. مشورة هي مكان أساعدك فيه بنفسي، مكالمة واحدة في المرة.',
-  12, 940, 4.9
+  'مستشار تجريبي',
+  'مستشار أعمال',
+  'هذا مشروع تجريبي لعرض فكرة نظام حجز الاستشارات. اسم المستشار وبياناته وأسعاره قابلة للتعديل بالكامل من لوحة الإدارة.',
+  null, 0, 0
 )
 on conflict (id) do update
   set name = excluded.name,
@@ -41,7 +41,7 @@ on conflict (slug) do update
       modes    = excluded.modes;
 
 -- ---------------------------------------------------------------------------
--- 3. Duration options — per-type pricing (mirrors src/lib/data.ts)
+-- 3. Duration options — per-type pricing 
 -- ---------------------------------------------------------------------------
 -- Wiped and re-inserted every run so pricing edits in this file take effect.
 delete from public.duration_options
@@ -92,14 +92,22 @@ values
   ('11111111-1111-1111-1111-111111111111', 4, '10:00', '15:00');  -- Thursday half-day
 
 -- ---------------------------------------------------------------------------
--- 5. Sample leads (only if table is empty — so we don't duplicate on re-run)
+-- 5. Create bookable slots for the next 4 weeks (re-run any time to extend)
+--    Needs 0002_security_hardening.sql. generate_slots() checks the caller is an
+--    admin, so from the SQL editor (no logged-in user) use the direct form below.
 -- ---------------------------------------------------------------------------
-insert into public.leads (name, email, phone, source, interest, status, note)
-select * from (values
-  ('هبة السيد',       'heba.elsayed@example.com',  '01055512340', 'اللاندينج',  'تسعير وربحية',   'new',       'دخلت من إعلان تسعير وسابت رقمها في نموذج التواصل.'),
-  ('طارق منير',       'tarek.mounir@example.com',  '01277788899', 'إحالة',      'تأسيس مشروع',    'contacted', 'رشّحه كريم الشريف، حاب يعمل جلسة أول أسبوع في سبتمبر.'),
-  ('ريم عبدالله',      'reem.a@example.com',        '01099988770', 'إنستجرام',   'نمو ومبيعات',    'qualified', 'استوديو أزياء ناشئ، محتاجة قنوات بيع أونلاين.'),
-  ('خالد إبراهيم',    'khaled.i@example.com',      '01033322210', 'بحث جوجل',   'تمويل واستثمار', 'new',       'حاب يجهّز بيتش لمستثمر خليجي.'),
-  ('سلمى فؤاد',       'salma.f@example.com',       '01144455566', 'لينكدإن',    'مراجعة سريعة',   'converted', 'حجزت جلسة مراجعة سريعة يوم ٢٤ أغسطس.')
-) as t(name, email, phone, source, interest, status, note)
-where not exists (select 1 from public.leads limit 1);
+insert into public.availability_slots (expert_id, starts_at, duration_minutes)
+select '11111111-1111-1111-1111-111111111111',
+       (g.ts at time zone 'Africa/Cairo'), 15
+from generate_series(0, 27) as i(n)
+join public.availability_rules r
+  on r.is_active
+ and r.weekday = extract(dow from (current_date + i.n))::int
+ and r.expert_id = '11111111-1111-1111-1111-111111111111'
+cross join lateral generate_series(
+  (current_date + i.n)::timestamp + r.start_time,
+  (current_date + i.n)::timestamp + r.end_time - interval '15 minutes',
+  interval '15 minutes'
+) as g(ts)
+where (g.ts at time zone 'Africa/Cairo') > now()
+on conflict do nothing;

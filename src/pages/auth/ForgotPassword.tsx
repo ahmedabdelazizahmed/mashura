@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { authError } from '@/lib/safeRedirect'
 
 export default function ForgotPassword() {
   const [sent, setSent] = useState(false)
@@ -12,11 +13,11 @@ export default function ForgotPassword() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: window.location.origin + '/reset',
     })
     setLoading(false)
-    if (error) { setError(error.message); return }
+    if (error) { setError(authError(error)); return }
     setSent(true)
   }
 
@@ -59,7 +60,7 @@ export default function ForgotPassword() {
             <p className="sub">بعتنا لينك استعادة كلمة السر على:</p>
             <span className="email-chip">{email}</span>
             <p className="sub" style={{ marginTop: 24 }}>اللينك بيفضل شغّال لمدة ٦٠ دقيقة. لو ما وصلكش، شوف مجلد سبام أو جرّب تبعت تاني.</p>
-            <div className="resend">ما وصلكش الإيميل؟ <a onClick={resend}>ابعت تاني</a></div>
+            <div className="resend">ما وصلكش الإيميل؟ <a role="button" tabIndex={0} onClick={resend}>جرّب تاني</a></div>
             <p className="foot"><Link to="/login">← رجوع للدخول</Link></p>
           </div>
         )}

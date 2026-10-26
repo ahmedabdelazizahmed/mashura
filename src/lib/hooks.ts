@@ -59,3 +59,12 @@ export const useAllBookings = (status?: BookingStatus) =>
 
 export const useClients = () => useAsync(() => api.getClients(), [])
 export const useLeads = (status?: LeadStatus) => useAsync(() => api.getLeads(status), [status])
+
+export const useAllPayments = () => useAsync(() => api.getAllPayments(), [])
+export const useRules = () => useAsync(() => api.getRules(), [])
+export const useSlotsRange = (days = 14) =>
+  useAsync(() => {
+    const from = new Date(); from.setHours(0, 0, 0, 0)
+    const to = new Date(from); to.setDate(to.getDate() + days)
+    return api.getAllSlots(from, to)
+  }, [days])

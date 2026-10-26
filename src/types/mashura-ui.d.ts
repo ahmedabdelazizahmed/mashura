@@ -64,6 +64,12 @@ interface InputProps extends Common {
   rows?: number
   containerStyle?: CSSProperties
   dir?: string
+  disabled?: boolean
+  required?: boolean
+  maxLength?: number
+  autoComplete?: string
+  name?: string
+  inputMode?: 'text' | 'numeric' | 'tel' | 'email'
 }
 
 interface SelectProps extends Common {

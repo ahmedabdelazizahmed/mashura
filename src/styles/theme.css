@@ -1,0 +1,22 @@
+/* Mashura green/yellow theme — remaps the design-system palette tokens so every
+   page (landing, auth, client app, admin) shares the approved look. */
+:root{
+  --pine-950:#054A31; --pine-900:#08633F; --pine-800:#0A7A4F; --pine-700:#0A6B45;
+  --pine-600:#2E9E5B; --pine-400:#5DB38A; --pine-200:#BFE3D2; --pine-100:#D6EFE2; --pine-050:#EEF8F3;
+
+  --saffron-700:#7A5C00; --saffron-600:#E0AE00; --saffron-500:#FFD23F; --saffron-400:#FFDF70;
+  --saffron-200:#FFEDB0; --saffron-100:#FFF7DB;
+
+  --sand-000:#FFFFFF; --sand-050:#F8FCFA; --sand-100:#F4FAF7; --sand-200:#E3F0E9; --sand-300:#D3E6DC;
+  --sand-400:#B5CFC3; --sand-500:#86A196; --sand-600:#4E6A60; --sand-700:#3F5C52; --sand-800:#1F3D33; --sand-900:#0D2B22;
+
+  --green-600:#0A7A4F; --green-100:#E3F4EB;
+  --overlay-ink:rgba(5,74,49,.55);
+
+  --font-display:"Tajawal","IBM Plex Sans Arabic",system-ui,sans-serif;
+  --font-sans:"Tajawal","IBM Plex Sans Arabic",system-ui,sans-serif;
+  --surface-page:#FFFFFF;
+}
+body{font-size:17px}
+a{border-bottom:none}
+a:hover{border-bottom:none}

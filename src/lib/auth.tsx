@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import type { UserRole } from '@/types/supabase'
@@ -46,6 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const profileId = useRef<string | null>(null)
+  useEffect(() => { profileId.current = profile?.id ?? null }, [profile])
 
   useEffect(() => {
     let cancelled = false
@@ -61,14 +63,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!cancelled) setLoading(false)
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, next) => {
+    // Keep the callback synchronous (supabase-js can deadlock if it awaits client calls here);
+    // load the profile in a deferred task and hold `loading` until it arrives so guards don't misroute.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next)
-      if (next?.user) {
-        const p = await fetchProfile(next.user.id)
-        setProfile(p)
-      } else {
-        setProfile(null)
-      }
+      if (!next?.user) { setProfile(null); setLoading(false); return }
+      if (profileId.current === next.user.id) return
+      setLoading(true)
+      const uid = next.user.id
+      setTimeout(async () => {
+        const p = await fetchProfile(uid)
+        if (!cancelled) { setProfile(p); setLoading(false) }
+      }, 0)
     })
 
     return () => {

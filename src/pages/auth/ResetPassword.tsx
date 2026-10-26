@@ -1,6 +1,7 @@
 import { useState, FormEvent, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { authError } from '@/lib/safeRedirect'
 
 export default function ResetPassword() {
   const nav = useNavigate()
@@ -15,6 +16,10 @@ export default function ResetPassword() {
   // (set in supabase.ts) turns the URL fragment into a session automatically.
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSessionReady(!!data.session))
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || session) setSessionReady(true)
+    })
+    return () => sub.subscription.unsubscribe()
   }, [])
 
   const r = [
@@ -30,12 +35,13 @@ export default function ResetPassword() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    if (!(r[0] && r[1] && r[2])) { setErr('كلمة السر لازم تحقق الشروط الثلاثة الأولى.'); return }
     if (pw !== pw2) { setErr('كلمة السر مش متطابقة.'); return }
     setErr(null)
     setLoading(true)
     const { error } = await supabase.auth.updateUser({ password: pw })
     setLoading(false)
-    if (error) { setErr(error.message); return }
+    if (error) { setErr(authError(error)); return }
     nav('/success?msg=pw', { replace: true })
   }
 
@@ -61,7 +67,7 @@ export default function ResetPassword() {
             <div className="field">
               <label>كلمة السر الجديدة</label>
               <div style={{ position: 'relative' }}>
-                <input className="input" type={show ? 'text' : 'password'} placeholder="على الأقل ٨ خانات" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={8} />
+                <input className="input" type={show ? 'text' : 'password'} autoComplete="new-password" placeholder="على الأقل ٨ خانات" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={8} />
                 <button type="button" onClick={() => setShow((s) => !s)} style={{ position: 'absolute', insetInlineEnd: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-subtle)', padding: 8 }} aria-label="اعرض كلمة السر">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                 </button>

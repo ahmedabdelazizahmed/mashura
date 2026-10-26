@@ -1,7 +1,8 @@
 import { ReactNode } from 'react'
-import { Card, Badge, Button, Icon, Input, Select, Checkbox, Stepper } from '@/lib/ui'
+import { Card, Badge, Button, Icon, Input, Checkbox, Stepper } from '@/lib/ui'
 import { useOpenSlots } from '@/lib/hooks'
 import { groupSlotsByDay } from '@/lib/adapt'
+import { Link } from 'react-router-dom'
 import type { BookingDraft, Mode, ConsultationType } from '@/types/data'
 
 export const STEPS = ['اختيار الموعد', 'الدفع', 'التأكيد']
@@ -184,8 +185,8 @@ function MethodDurationSelector({ draft, set }: { draft: BookingDraft; set: (p: 
 
 // ------- Compact slot picker + legend — driven by real availability_slots -------
 function SlotPicker({ draft, set }: { draft: BookingDraft; set: (p: Partial<BookingDraft>) => void }) {
-  const { data: rows, loading, error } = useOpenSlots(21)
-  const week = groupSlotsByDay(rows ?? [])
+  const { data: rows, loading, error } = useOpenSlots(28)
+  const week = groupSlotsByDay(rows ?? [], draft.duration ?? 30)
   const monthLabel = week[0]
     ? new Date(week[0].slots[0].startsAt).toLocaleDateString('ar-EG', { month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' })
     : ''
@@ -197,12 +198,12 @@ function SlotPicker({ draft, set }: { draft: BookingDraft; set: (p: Partial<Book
   )
   if (error) return (
     <div style={{ textAlign: 'center', padding: 'var(--space-9)', border: '1px dashed var(--status-danger-fg)', borderRadius: 'var(--radius-md)', color: 'var(--status-danger-fg)', fontSize: 'var(--size-body-sm)' }}>
-      ما قدرناش نجيب المواعيد. تأكد إن جداول Supabase اتنشأت.
+      ما قدرناش نجيب المواعيد. اتأكد من النت وجرّب تاني.
     </div>
   )
   if (week.length === 0) return (
     <div style={{ textAlign: 'center', padding: 'var(--space-9)', border: '1px dashed var(--border-subtle)', borderRadius: 'var(--radius-md)', color: 'var(--text-muted)', fontSize: 'var(--size-body-sm)' }}>
-      مفيش مواعيد مفتوحة حاليًا — فعّل التنبيهات من حسابك وأول ما ميعاد يفتح نبعتلك.
+      مفيش مواعيد مفتوحة للمدة دي حاليًا. جرّب مدة أقصر أو ارجع بعدين.
     </div>
   )
 
@@ -210,7 +211,7 @@ function SlotPicker({ draft, set }: { draft: BookingDraft; set: (p: Partial<Book
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)', flexWrap: 'wrap', gap: 'var(--space-5)' }}>
         <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--weight-semibold)', fontSize: 'var(--size-body-lg)', color: 'var(--pine-800)' }}>{monthLabel}</span>
-        <Select options={['القاهرة (GMT+2)', 'الرياض (GMT+3)', 'دبي (GMT+4)']} containerStyle={{ maxWidth: 200 }} />
+        <span style={{ fontSize: 'var(--size-caption)', color: 'var(--text-muted)' }}>كل المواعيد بتوقيت القاهرة</span>
       </div>
 
       {/* Day chips */}
@@ -293,7 +294,7 @@ function BookingSummary({ draft, cta, canSubmit, onSubmit, submitting }: {
     ['الوقت', draft.slot ?? '—'],
   ]
   return (
-    <Card padding="lg" style={{ position: 'sticky', top: 'var(--space-9)', background: 'linear-gradient(180deg, var(--surface-card), var(--sand-050))', borderColor: 'var(--pine-100)' }}>
+    <Card padding="lg" className="book-summary" style={{ background: 'linear-gradient(180deg, var(--surface-card), var(--sand-050))', borderColor: 'var(--pine-100)' }}>
       <div style={{ fontSize: 'var(--size-overline)', fontWeight: 'var(--weight-bold)', color: 'var(--saffron-700)', letterSpacing: '.08em' }}>ملخّص الحجز</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', marginTop: 'var(--space-7)' }}>
         {rows.map(([k, v]) => (
@@ -314,7 +315,7 @@ function BookingSummary({ draft, cta, canSubmit, onSubmit, submitting }: {
         style={{ marginTop: 'var(--space-8)' }} onClick={onSubmit}>{cta}</Button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'var(--space-6)', fontSize: 'var(--size-caption)', color: 'var(--text-subtle)', justifyContent: 'center' }}>
         <Icon name="shield-check" size={14} />
-        <span>الميعاد بيتحجز مؤقتًا أثناء الدفع</span>
+        <span>السعر بيتحسب من السيرفر ومينفعش يتغير</span>
       </div>
     </Card>
   )
@@ -336,15 +337,15 @@ export function BookingFlow({ step, draft, set, next, back, submitting, onConfir
   const idx = ORDER.indexOf(step)
   const configureDone = !!(draft.type && draft.mode && draft.duration && draft.slot)
   const canSubmit = step === 'configure' ? configureDone : !!draft.terms
-  const cta = step === 'configure' ? 'متابعة للدفع' : 'ادفع وأكّد الحجز'
+  const cta = step === 'configure' ? 'متابعة' : 'أرسل طلب الحجز'
   const submit = step === 'configure' ? next : onConfirm
 
   return (
-    <div style={{ maxWidth: 1160, margin: '0 auto', padding: 'var(--space-10) var(--space-8) var(--space-13)' }}>
+    <div className="pad-page">
       <Stepper current={idx} steps={STEPS} style={{ marginBottom: 'var(--space-10)' }} />
 
       {/* summary LEFT, content RIGHT (RTL: 340px column on the start side) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '340px minmax(0, 1fr)', gap: 'var(--space-9)', alignItems: 'start' }}>
+      <div className="book-grid">
         <BookingSummary draft={draft} cta={cta} canSubmit={canSubmit} onSubmit={submit} submitting={submitting} />
 
         <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-10)' }}>
@@ -408,7 +409,7 @@ function ConfigurePanel({ draft, set, types }: { draft: BookingDraft; set: (p: P
           <div style={{ maxWidth: 640 }}>
             <Input multiline rows={3} placeholder="سطرين يوفّروا وقت المكالمة"
               value={draft.topic} onChange={(e) => set({ topic: e.target.value })}
-              hint="بيساعد أحمد يحضّر قبل الجلسة." />
+              hint="بيساعد المستشار يحضّر قبل الجلسة." maxLength={500} />
           </div>
         </section>
       )}
@@ -417,58 +418,72 @@ function ConfigurePanel({ draft, set, types }: { draft: BookingDraft; set: (p: P
 }
 
 // ------- Step 2 content: Pay -------
+// Payments are manual for now: the consultant records the payment after the
+// session is agreed. Online card payment is shown below as a disabled preview.
 function PayPanel({ draft, set }: { draft: BookingDraft; set: (p: Partial<BookingDraft>) => void }) {
   return (
     <>
       <section>
         <SectionHeader n={1} title="طريقة الدفع" />
-        <div style={{ maxWidth: 480 }}>
-          <SegmentedControl<'card' | 'wallet'>
+        <div style={{ maxWidth: 520 }}>
+          <SegmentedControl<'cash' | 'wallet'>
             value={draft.pm}
             onChange={(v) => set({ pm: v })}
             options={[
-              { value: 'card', label: 'كارت بنكي', icon: 'credit-card' },
-              { value: 'wallet', label: 'محفظة موبايل', icon: 'phone' },
+              { value: 'cash', label: 'كاش', icon: 'phone' },
+              { value: 'wallet', label: 'تحويل محفظة', icon: 'phone' },
             ]}
           />
+          <p style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)', marginTop: 'var(--space-5)' }}>
+            مفيش دفع دلوقتي. المستشار هيأكّد الحجز ويتفق معاك على طريقة السداد.
+          </p>
         </div>
       </section>
 
       <section>
-        <SectionHeader n={2} title="بيانات الدفع" />
-        <div style={{ maxWidth: 'var(--width-form)', display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-          <Input label="رقم الكارت" placeholder="٤٥٤٥ ٠٠٠٠ ٠٠٠٠ ٠٠٠٠" icon="credit-card" />
+        <SectionHeader n={2} title="الدفع الإلكتروني" />
+        <div style={{ maxWidth: 'var(--width-form)', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', opacity: .55 }} aria-disabled="true">
+          <Input label="رقم الكارت" placeholder="•••• •••• •••• ••••" icon="credit-card" disabled />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'var(--space-5)' }}>
-            <Input label="تاريخ الانتهاء" placeholder="١٢/٢٨" />
-            <Input label="CVV" placeholder="١٢٣" />
+            <Input label="تاريخ الانتهاء" placeholder="شهر/سنة" disabled />
+            <Input label="رمز الأمان" placeholder="•••" disabled />
           </div>
-          <Input label="الإيميل" defaultValue="you@example.com" hint="التأكيد واللينك بيوصلوا هنا." />
-          <Checkbox label="موافق على شروط الحجز وسياسة الإلغاء"
-            checked={!!draft.terms} onChange={(e) => set({ terms: e.target.checked })} />
         </div>
+        <p style={{ marginTop: 'var(--space-5)', display: 'inline-flex', gap: 8, alignItems: 'center', padding: '8px 14px', borderRadius: 'var(--radius-md)', background: 'var(--saffron-100)', color: 'var(--saffron-700)', fontSize: 'var(--size-body-sm)', fontWeight: 'var(--weight-medium)' }}>
+          <Icon name="info" size={16} />شكل توضيحي — الدفع الإلكتروني يُفعَّل مع العميل الفعلي.
+        </p>
+      </section>
+
+      <section>
+        <Checkbox label="موافق على شروط الحجز"
+          checked={!!draft.terms} onChange={(e) => set({ terms: e.target.checked })} />
+        <p style={{ fontSize: 'var(--size-caption)', color: 'var(--text-muted)', marginTop: 8 }}>
+          اطلع على <Link to="/terms" target="_blank">الشروط</Link> و<Link to="/privacy" target="_blank">سياسة الخصوصية</Link>.
+        </p>
       </section>
     </>
   )
 }
 
 // ------- Confirmation view (step 3 in stepper) -------
-export function ConfirmationView({ draft, onDone }: { draft: BookingDraft; onDone: () => void }) {
+export function ConfirmationView({ draft, bookingRef, onDone }: { draft: BookingDraft; bookingRef: string | null; onDone: () => void }) {
   const rows: [string, ReactNode][] = [
     ['الخدمة', draft.type ? draft.type.title : '—'],
     ['الطريقة', modeLabel(draft.mode)],
     ['المدة', durationLabel(draft.duration)],
     ['الميعاد', `${draft.day || ''} ${draft.slot || ''}`],
     ['الإجمالي', `${computePrice(draft)} ج.م`],
+    ...(bookingRef ? [['رقم الحجز', bookingRef] as [string, ReactNode]] : []),
   ]
   return (
-    <div style={{ maxWidth: 1160, margin: '0 auto', padding: 'var(--space-10) var(--space-8) var(--space-13)' }}>
+    <div className="pad-page">
       <Stepper current={2} steps={STEPS} style={{ marginBottom: 'var(--space-10)' }} />
       <div style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center' }}>
         <span style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--status-success-bg)', color: 'var(--status-success-fg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon name="check-circle" size={36} />
         </span>
-        <h1 style={{ fontSize: 'var(--size-h1)', marginTop: 'var(--space-8)' }}>الحجز اتأكّد</h1>
-        <p style={{ color: 'var(--text-muted)', marginTop: 'var(--space-5)' }}>بعتنا لك التفاصيل واللينك على الإيميل والواتساب.</p>
+        <h1 style={{ fontSize: 'var(--size-h1)', marginTop: 'var(--space-8)' }}>وصلنا طلب الحجز</h1>
+        <p style={{ color: 'var(--text-muted)', marginTop: 'var(--space-5)' }}>الميعاد اتحجزلك. هتلاقي الحجز في حسابك، وهيتأكد بعد مراجعة المستشار.</p>
         <Card padding="lg" style={{ marginTop: 'var(--space-9)', textAlign: 'start' }}>
           {rows.map(([k, v], i) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-6)', padding: 'var(--space-5) 0', borderTop: i ? '1px solid var(--border-subtle)' : 'none' }}>

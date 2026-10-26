@@ -10,11 +10,16 @@ import Success from './pages/auth/Success'
 import ClientApp from './pages/client/ClientApp'
 import AdminApp from './pages/admin/AdminApp'
 import { RequireAuth, RequireRole } from './lib/guards'
+import { Privacy, Terms } from './pages/Legal'
+import Assistant from './components/Assistant'
 
 export default function App() {
   return (
+    <>
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
 
       {/* Auth — public */}
       <Route path="/login" element={<Login />} />
@@ -33,5 +38,7 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <Assistant />
+    </>
   )
 }

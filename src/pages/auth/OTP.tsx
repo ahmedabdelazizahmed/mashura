@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent, FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { authError, getPendingEmail } from '@/lib/safeRedirect'
 
 const arNum = (n: number) =>
   String(n).padStart(2, '0').replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[+d])
@@ -8,7 +9,7 @@ const arNum = (n: number) =>
 export default function OTP() {
   const nav = useNavigate()
   const [params] = useSearchParams()
-  const email = params.get('email') || ''
+  const email = params.get('email') || getPendingEmail()
   const [digits, setDigits] = useState<string[]>(Array(6).fill(''))
   const [seconds, setSeconds] = useState(59)
   const [loading, setLoading] = useState(false)
@@ -39,7 +40,7 @@ export default function OTP() {
     setLoading(true)
     const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
     setLoading(false)
-    if (error) { setError(error.message); return }
+    if (error) { setError(authError(error)); return }
     nav('/success?msg=verify', { replace: true })
   }
 

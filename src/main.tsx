@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './lib/auth'
 import './styles/global.css'
+import './styles/theme.css'
 
 // React and ReactDOM come from window (loaded by <script> in index.html);
 // the vite.config alias rewires the `react` / `react-dom` imports to shims.

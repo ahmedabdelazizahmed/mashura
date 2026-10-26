@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { authError, googleAuthEnabled, setPendingEmail } from '@/lib/safeRedirect'
 
 export default function Signup() {
   const nav = useNavigate()
@@ -15,25 +16,24 @@ export default function Signup() {
   const r2 = /[a-z]/.test(pw) && /[A-Z]/.test(pw)
   const r3 = /\d/.test(pw)
   const score = [r1, r2, r3].filter(Boolean).length
+  const strong = r1 && r2 && r3
   const barCls = (i: number) =>
     `strength-bar${i < score ? (score === 1 ? ' weak' : score === 2 ? ' med' : ' strong') : ''}`
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    if (loading || !strong) return
     setError(null)
     setLoading(true)
+    const cleanEmail = email.trim()
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password: pw,
-      options: { data: { name, phone: phone || null } },
+      options: { data: { name: name.trim().slice(0, 100), phone: phone.trim().slice(0, 30) || null }, emailRedirectTo: window.location.origin + '/app' },
     })
     setLoading(false)
-    if (error) {
-      setError(error.message === 'User already registered'
-        ? 'الإيميل ده مسجّل قبل كده — سجّل دخول بدل ما تسجّل جديد.'
-        : error.message)
-      return
-    }
+    if (error) { setError(authError(error)); return }
+    setPendingEmail(cleanEmail)
     // With email confirm OFF (dev), we have an immediate session → go to app.
     // With it ON, session is null and user must verify first.
     if (data.session) nav('/app', { replace: true })
@@ -46,7 +46,7 @@ export default function Signup() {
       provider: 'google',
       options: { redirectTo: window.location.origin + '/app' },
     })
-    if (error) setError(error.message)
+    if (error) setError(authError(error))
   }
 
   return (
@@ -56,11 +56,10 @@ export default function Signup() {
         <div className="tagline">
           <span className="overline">ابدأ في دقيقتين</span>
           <h1>اعمل حساب واحجز أول مشورة بيزنس</h1>
-          <p>الحساب مجاني. تدفع بس لما تحجز مشورة. تقدر تلغي أو تعدّل مواعيدك في أي وقت.</p>
+          <p>الحساب مجاني، وتتابع منه كل حجوزاتك وتلغي حجزك قبل ما يتأكّد.</p>
         </div>
         <div className="testimonial">
-          <blockquote>"أول جلسة مع أحمد وفّرت عليّ شهرين من التخبّط."</blockquote>
-          <cite>— كريم الشريف</cite>
+          <blockquote>مشروع تجريبي لإثبات الفكرة: الحجز والمواعيد والمساعد الذكي شغّالين، وبعض الأجزاء (زي الدفع الإلكتروني) شكل توضيحي لحد ما تتفعّل مع عميل فعلي.</blockquote>
         </div>
       </aside>
 
@@ -75,20 +74,20 @@ export default function Signup() {
           <form onSubmit={onSubmit}>
             <div className="field">
               <label>الاسم بالكامل</label>
-              <input className="input" type="text" placeholder="منة حسن" value={name} onChange={e => setName(e.target.value)} required />
+              <input className="input" type="text" placeholder="الاسم" autoComplete="name" maxLength={100} value={name} onChange={e => setName(e.target.value)} required />
             </div>
             <div className="field">
               <label>البريد الإلكتروني</label>
-              <input className="input" type="email" placeholder="you@example.com" dir="ltr" style={{ textAlign: 'end' }} value={email} onChange={e => setEmail(e.target.value)} required />
+              <input className="input" type="email" autoComplete="email" placeholder="you@example.com" dir="ltr" style={{ textAlign: 'end' }} value={email} onChange={e => setEmail(e.target.value)} required />
             </div>
             <div className="field">
               <label>رقم الموبايل</label>
-              <input className="input" type="tel" placeholder="01xxxxxxxxx" dir="ltr" style={{ textAlign: 'end' }} value={phone} onChange={e => setPhone(e.target.value)} />
-              <span className="hint">اختياري — نبعت تنبيهات واتساب قبل الجلسة بساعة.</span>
+              <input className="input" type="tel" autoComplete="tel" maxLength={30} placeholder="01xxxxxxxxx" dir="ltr" style={{ textAlign: 'end' }} value={phone} onChange={e => setPhone(e.target.value)} />
+              <span className="hint">اختياري — بيساعد المستشار يتواصل معاك بخصوص الحجز.</span>
             </div>
             <div className="field">
               <label>كلمة السر</label>
-              <input className="input" type="password" placeholder="حروف وأرقام، على الأقل ٨ خانات" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={8} />
+              <input className="input" type="password" autoComplete="new-password" placeholder="حروف وأرقام، على الأقل ٨ خانات" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={8} />
               <div className="strength">
                 <div className={barCls(0)}></div>
                 <div className={barCls(1)}></div>
@@ -100,21 +99,23 @@ export default function Signup() {
                 <li className={r3 ? 'ok' : ''}>رقم واحد على الأقل</li>
               </ul>
             </div>
-            {error && <div style={{ background: 'var(--status-danger-bg)', color: 'var(--status-danger-fg)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--size-body-sm)' }}>{error}</div>}
-            <label className="check" style={{ marginTop: 4 }}><input type="checkbox" required /> موافق على <a href="#">شروط الاستخدام</a> و<a href="#">سياسة الخصوصية</a></label>
-            <button type="submit" className="btn btn-primary btn-full" disabled={loading || score < 2}>
+            {error && <div role="alert" style={{ background: 'var(--status-danger-bg)', color: 'var(--status-danger-fg)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--size-body-sm)' }}>{error}</div>}
+            <label className="check" style={{ marginTop: 4 }}><input type="checkbox" required /> موافق على <Link to="/terms" target="_blank">شروط الاستخدام</Link> و<Link to="/privacy" target="_blank">سياسة الخصوصية</Link></label>
+            <button type="submit" className="btn btn-primary btn-full" disabled={loading || !strong}>
               {loading ? 'جاري الإنشاء...' : 'اعمل حساب'}
             </button>
-            <div className="divider">أو</div>
-            <div className="social">
-              <button type="button" className="btn btn-secondary btn-full" onClick={onGoogle}>
-                <span className="g-icon"></span> كمّل بحساب جوجل
-              </button>
-            </div>
+            {googleAuthEnabled() && (<>
+              <div className="divider">أو</div>
+              <div className="social">
+                <button type="button" className="btn btn-secondary btn-full" onClick={onGoogle}>
+                  <span className="g-icon"></span> كمّل بحساب جوجل
+                </button>
+              </div>
+            </>)}
           </form>
-          <p className="signup">هتوصلك رسالة تأكيد على الإيميل بعد الإنشاء.</p>
+          <p className="signup">لو تأكيد الإيميل مفعّل هتوصلك رسالة تأكيد بعد الإنشاء.</p>
         </div>
-        <div className="foot-legal">© مشورة · <a href="#">سياسة الخصوصية</a></div>
+        <div className="foot-legal">© مشورة · <Link to="/privacy">سياسة الخصوصية</Link></div>
       </main>
     </div>
   )

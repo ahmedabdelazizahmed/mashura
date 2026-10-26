@@ -4,12 +4,20 @@ import { employees, roles as ROLES, permissions as PERMS, roleOf } from '@/lib/d
 import type { TeamMember, PermissionId } from '@/types/data'
 import { PageHead } from './AdminShell'
 
+function DemoBanner() {
+  return (
+    <div role="note" style={{ background: 'var(--saffron-100)', color: 'var(--text-title)', border: '1px solid var(--saffron-300, var(--border-subtle))', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: 'var(--size-body-sm)', marginBottom: 'var(--space-7)' }}>
+      <strong>شكل توضيحي:</strong> البيانات هنا أمثلة، وتُفعَّل مع العميل الفعلي. لتغيير دور مستخدم فعلي استخدم <code dir="ltr">set_user_role</code> من قاعدة البيانات (موضّح في README).
+    </div>
+  )
+}
+
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger'> = {
   'نشط': 'success', 'مدعوّ': 'warning', 'موقوف': 'danger',
 }
 
 // ============================================================
-// EMPLOYEES  —  Ahmed's team, admin-side. Table with inline actions.
+// EMPLOYEES  —  visual only (demo), admin-side. Table with inline actions.
 // ============================================================
 export function Employees() {
   const [q, setQ] = useState('')
@@ -21,10 +29,11 @@ export function Employees() {
   const invited = employees.filter((e) => e.status === 'مدعوّ').length
 
   return (
-    <div style={{ maxWidth: 1160, margin: '0 auto', padding: 'var(--space-11)' }}>
+    <div className="adm-page">
       <PageHead title="الموظفون" sub="أضف فريقك وحدّد دور كل واحد — الصلاحيات بتتحكم في اللي يقدر يوصله."
         action={<div style={{ display: 'flex', gap: 'var(--space-5)' }}>
           <Input placeholder="ابحث..." icon="search" value={q} onChange={(e) => setQ(e.target.value)} containerStyle={{ minWidth: 240 }} />
+      <DemoBanner />
           <Button icon="plus" onClick={() => setInvite(true)}>دعوة موظف</Button>
         </div>} />
 
@@ -122,9 +131,10 @@ export function Permissions() {
     id === 'owner' ? 'success' : id === 'admin' ? 'brand' : id === 'reception' ? 'warning' : 'neutral'
 
   return (
-    <div style={{ maxWidth: 1160, margin: '0 auto', padding: 'var(--space-11)' }}>
+    <div className="adm-page">
       <PageHead title="الصلاحيات والأدوار" sub="حدّد كل دور بيقدر يعمل إيه. التغييرات بتتطبّق على كل موظف بنفس الدور."
         action={<Button icon="plus">إضافة دور</Button>} />
+      <DemoBanner />
 
       {/* Role summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 'var(--space-6)', marginBottom: 'var(--space-9)' }}>

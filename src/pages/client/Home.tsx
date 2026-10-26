@@ -34,16 +34,18 @@ export default function Home({ onBook, onPickType }: Props) {
           <div>
             <span style={{ fontSize: 'var(--size-overline)', fontWeight: 'var(--weight-bold)', color: 'var(--saffron-700)' }}>حجز مشورة بيزنس ومشاريع</span>
             <h1 style={{ fontSize: 44, lineHeight: 'var(--leading-display)', marginTop: 'var(--space-6)', color: 'var(--text-title)' }}>مشورة واضحة من غير لفّ ودوران</h1>
-            <p style={{ fontSize: 'var(--size-body-lg)', color: 'var(--text-muted)', marginTop: 'var(--space-6)', maxWidth: '46ch' }}>احجز استشارة مع {expert.name} في دقيقة. اختار فيديو أو مكالمة صوتية، حدّد الميعاد المناسب، وادفع أونلاين.</p>
+            <p style={{ fontSize: 'var(--size-body-lg)', color: 'var(--text-muted)', marginTop: 'var(--space-6)', maxWidth: '46ch' }}>احجز استشارة مع {expert.name} في دقيقة. اختار فيديو أو مكالمة صوتية، حدّد الميعاد المناسب، وأرسل طلب الحجز.</p>
             <div style={{ display: 'flex', gap: 'var(--space-6)', marginTop: 'var(--space-9)' }}>
               <Button size="lg" icon="calendar" onClick={onBook}>احجز مشورة</Button>
               <Button size="lg" variant="secondary" icon="briefcase">شوف الاستشارات</Button>
             </div>
-            <div style={{ display: 'flex', gap: 'var(--space-10)', marginTop: 'var(--space-11)' }}>
-              <StatBlock value={expert.years ?? 0} label="سنة خبرة" />
-              <StatBlock value={expert.sessions} label="جلسة" />
-              <StatBlock value={expert.rating} label="تقييم العملاء" />
-            </div>
+            {(expert.sessions > 0 || (expert.years ?? 0) > 0) && (
+              <div style={{ display: 'flex', gap: 'var(--space-10)', marginTop: 'var(--space-11)' }}>
+                {(expert.years ?? 0) > 0 && <StatBlock value={expert.years ?? 0} label="سنة خبرة" />}
+                {expert.sessions > 0 && <StatBlock value={expert.sessions} label="جلسة" />}
+                {expert.rating > 0 && <StatBlock value={expert.rating} label="تقييم العملاء" />}
+              </div>
+            )}
           </div>
           <Card padding="lg" style={{ textAlign: 'center' }}>
             <span style={{ width: 84, height: 84, borderRadius: '50%', background: 'var(--pine-700)', color: 'var(--sand-050)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 'var(--weight-semibold)' }}>{expert.name[0]}</span>

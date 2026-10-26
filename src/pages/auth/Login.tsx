@@ -1,14 +1,13 @@
 import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { FormEvent, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/lib/auth'
+import { safePath, authError, googleAuthEnabled } from '@/lib/safeRedirect'
 
 export default function Login() {
   const [params] = useSearchParams()
   const nav = useNavigate()
-  const { refreshProfile } = useAuth()
   const isAdmin = params.get('role') === 'admin'
-  const redirect = params.get('redirect')
+  const redirect = safePath(params.get('redirect'), isAdmin ? '/admin' : '/app')
 
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
@@ -17,29 +16,22 @@ export default function Login() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    if (loading) return
     setError(null)
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pw })
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pw })
     setLoading(false)
-    if (error) {
-      setError(error.message === 'Invalid login credentials'
-        ? 'الإيميل أو كلمة السر غلط.'
-        : error.message)
-      return
-    }
-    await refreshProfile()
-    // Prefer explicit ?redirect=, otherwise role-based default.
-    if (redirect) nav(decodeURIComponent(redirect), { replace: true })
-    else nav(isAdmin ? '/admin' : '/app', { replace: true })
+    if (error) { setError(authError(error)); return }
+    nav(redirect, { replace: true })
   }
 
   const onGoogle = async () => {
     setError(null)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + (isAdmin ? '/admin' : '/app') },
+      options: { redirectTo: window.location.origin + redirect },
     })
-    if (error) setError(error.message)
+    if (error) setError(authError(error))
   }
 
   return (
@@ -52,11 +44,10 @@ export default function Login() {
         <div className="tagline">
           <span className="overline">{isAdmin ? 'لوحة الأدمن' : 'مشورة بيزنس ومشاريع'}</span>
           <h1>{isAdmin ? 'كل شغل مشورة في مكان واحد' : 'ارجع لحجوزاتك ومواعيدك في مكان واحد'}</h1>
-          <p>{isAdmin ? 'حجوزات، مواعيد، عملاء، مدفوعات — كلها في لوحة إدارة نظيفة، مصمّمة لأحمد.' : 'سجّل دخول عشان تشوف مشوراتك القادمة، تنزّل فواتيرك، أو تحجز مشورة جديدة مع أحمد.'}</p>
+          <p>{isAdmin ? 'حجوزات، مواعيد، عملاء، مدفوعات — كلها في لوحة إدارة واحدة.' : 'سجّل دخول عشان تتابع حجوزاتك أو تحجز مشورة جديدة.'}</p>
         </div>
         <div className="testimonial">
-          <blockquote>"أول جلسة مع أحمد وفّرت عليّ شهرين من التخبّط. الحجز والدفع أخدوا دقيقتين."</blockquote>
-          <cite>— كريم الشريف، مؤسس شركة ناشئة</cite>
+          <blockquote>مشروع تجريبي لإثبات الفكرة: الحجز والمواعيد والمساعد الذكي شغّالين، وبعض الأجزاء (زي الدفع الإلكتروني) شكل توضيحي لحد ما تتفعّل مع عميل فعلي.</blockquote>
         </div>
       </aside>
 
@@ -76,26 +67,26 @@ export default function Login() {
               ادخل للوحة الأدمن
             </Link>
           </div>
-          <h2>{isAdmin ? 'دخول أحمد — لوحة الإدارة' : 'أهلاً بيك من تاني'}</h2>
-          <p className="sub">{isAdmin ? 'دخول مخصّص للمستشار — يفتح لوحة إدارة الحجوزات والعملاء والمواعيد.' : 'ادخل بياناتك عشان توصل لحسابك.'}</p>
+          <h2>{isAdmin ? 'دخول فريق الإدارة' : 'أهلاً بيك من تاني'}</h2>
+          <p className="sub">{isAdmin ? 'دخول مخصّص للفريق — يفتح لوحة إدارة الحجوزات والعملاء والمواعيد.' : 'ادخل بياناتك عشان توصل لحسابك.'}</p>
           <form onSubmit={onSubmit}>
             <div className="field">
               <label htmlFor="email">البريد الإلكتروني</label>
-              <input className="input" type="email" id="email" placeholder="you@example.com" dir="ltr" style={{ textAlign: 'end' }} value={email} onChange={e => setEmail(e.target.value)} required />
+              <input className="input" type="email" id="email" autoComplete="email" placeholder="you@example.com" dir="ltr" style={{ textAlign: 'end' }} value={email} onChange={e => setEmail(e.target.value)} required />
             </div>
             <div className="field">
               <label htmlFor="pw">كلمة السر</label>
-              <input className="input" type="password" id="pw" placeholder="••••••••" value={pw} onChange={e => setPw(e.target.value)} required />
+              <input className="input" type="password" id="pw" autoComplete="current-password" placeholder="••••••••" value={pw} onChange={e => setPw(e.target.value)} required />
             </div>
-            {error && <div style={{ background: 'var(--status-danger-bg)', color: 'var(--status-danger-fg)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--size-body-sm)' }}>{error}</div>}
+            {error && <div role="alert" style={{ background: 'var(--status-danger-bg)', color: 'var(--status-danger-fg)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--size-body-sm)' }}>{error}</div>}
             <div className="field-row">
-              <label className="check"><input type="checkbox" defaultChecked /> فكّرني</label>
+              <span></span>
               <Link to="/forgot" style={{ color: 'var(--pine-700)', fontWeight: 'var(--weight-medium)' }}>نسيت كلمة السر؟</Link>
             </div>
             <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
               {loading ? 'جاري الدخول...' : (isAdmin ? 'دخول اللوحة' : 'دخول')}
             </button>
-            {!isAdmin && (<>
+            {!isAdmin && googleAuthEnabled() && (<>
               <div className="divider">أو</div>
               <div className="social">
                 <button type="button" className="btn btn-secondary btn-full" onClick={onGoogle}>
@@ -106,7 +97,7 @@ export default function Login() {
           </form>
           {!isAdmin && <p className="signup">لسه ما عندكش حساب؟ <Link to="/signup">اعمل واحد في نص دقيقة</Link></p>}
         </div>
-        <div className="foot-legal">© مشورة · <a href="#">سياسة الخصوصية</a> · <a href="#">الشروط</a></div>
+        <div className="foot-legal">© مشورة · <Link to="/privacy">سياسة الخصوصية</Link> · <Link to="/terms">الشروط</Link></div>
       </main>
     </div>
   )

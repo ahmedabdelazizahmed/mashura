@@ -6,9 +6,9 @@ export type Mode = 'video' | 'audio' | 'in-person'
 // Duration is any minute count the admin configures per consultation type.
 // Minimum is 15 (ربع ساعة). Common values: 15, 30, 45, 60, 90, 120.
 export type Duration = number
-export type BookingStatus = 'مؤكّد' | 'خلصت' | 'ملغي'
+export type BookingStatus = 'بانتظار التأكيد' | 'مؤكّد' | 'خلصت' | 'ملغي' | 'غياب'
 export type PaymentStatus = 'مدفوع' | 'مرتجع' | 'فاشل'
-export type PaymentMethod = 'كارت بنكي' | 'محفظة موبايل'
+export type PaymentMethod = 'كارت بنكي' | 'محفظة موبايل' | 'كاش'
 export type LeadStatus = 'جديد' | 'تم التواصل' | 'مؤهّل' | 'اتحوّل لعميل' | 'مغلق'
 export type NotificationType = 'حجز جديد' | 'إلغاء' | 'دفع' | 'تذكير' | 'ميعاد'
 
@@ -170,7 +170,7 @@ export interface BookingDraft {
   startsAt: string | null      // ISO start time of the picked slot
   topic: string
   terms: boolean
-  pm: 'card' | 'wallet'
+  pm: 'cash' | 'wallet'
 }
 
 export const emptyDraft: BookingDraft = {
@@ -183,5 +183,5 @@ export const emptyDraft: BookingDraft = {
   startsAt: null,
   topic: '',
   terms: false,
-  pm: 'card',
+  pm: 'cash',
 }

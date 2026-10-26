@@ -1,4 +1,4 @@
-// Generated types mirror the tables in supabase/migrations/0001_init.sql.
+// Types mirror supabase/migrations/0001_init.sql + 0002_security_hardening.sql.
 // Regenerate later with:
 //   npx supabase gen types typescript --project-id <your-project-ref> > src/types/supabase.ts
 
@@ -131,6 +131,7 @@ export interface Database {
           duration_minutes: number
           is_blocked: boolean
           is_booked: boolean
+          booking_id: string | null
           created_at: string
         }
         Insert: {
@@ -268,6 +269,26 @@ export interface Database {
     Functions: {
       is_staff: { Args: Record<string, never>; Returns: boolean }
       is_admin: { Args: Record<string, never>; Returns: boolean }
+      is_staff_writer: { Args: Record<string, never>; Returns: boolean }
+      create_booking: {
+        Args: { p_type_id: string; p_minutes: number; p_mode: string; p_starts_at: string; p_topic?: string | null; p_payment_method?: string }
+        Returns: Database['public']['Tables']['bookings']['Row']
+      }
+      cancel_booking: { Args: { p_booking_id: string }; Returns: Database['public']['Tables']['bookings']['Row'] }
+      set_booking_status: {
+        Args: { p_booking_id: string; p_status?: string | null; p_meeting_url?: string | null; p_location?: string | null }
+        Returns: Database['public']['Tables']['bookings']['Row']
+      }
+      set_payment_status: {
+        Args: { p_payment_id: string; p_status: string; p_provider_ref?: string | null }
+        Returns: Database['public']['Tables']['payments']['Row']
+      }
+      capture_lead: {
+        Args: { p_name: string; p_email: string; p_phone?: string | null; p_interest?: string | null; p_source?: string | null }
+        Returns: undefined
+      }
+      generate_slots: { Args: { p_from: string; p_to: string }; Returns: number }
+      set_user_role: { Args: { p_email: string; p_role: string }; Returns: Database['public']['Tables']['profiles']['Row'] }
     }
   }
 }
