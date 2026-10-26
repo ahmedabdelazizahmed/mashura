@@ -1,0 +1,60 @@
+/* Semantic aliases — application code should use these, not the base scales. */
+:root{
+  /* Surfaces */
+  --surface-page:var(--sand-100);
+  --surface-card:var(--sand-000);
+  --surface-raised:var(--sand-050);
+  --surface-sunken:var(--sand-200);
+  --surface-inverse:var(--pine-800);
+  --surface-inverse-deep:var(--pine-950);
+  --surface-accent-soft:var(--saffron-100);
+  --surface-brand-soft:var(--pine-050);
+
+  /* Text */
+  --text-title:var(--sand-900);
+  --text-body:var(--sand-800);
+  --text-muted:var(--sand-700);
+  --text-subtle:var(--sand-600);
+  --text-on-inverse:var(--sand-050);
+  --text-on-inverse-muted:var(--pine-200);
+  --text-brand:var(--pine-700);
+  --text-link:var(--pine-700);
+  --text-link-hover:var(--pine-900);
+
+  /* Lines */
+  --border-subtle:var(--sand-300);
+  --border-default:var(--sand-400);
+  --border-strong-color:var(--pine-800);
+  --border-inverse:rgba(255,255,255,.16);
+
+  /* Actions */
+  --action-primary-bg:var(--pine-800);
+  --action-primary-bg-hover:var(--pine-900);
+  --action-primary-bg-active:var(--pine-950);
+  --action-primary-fg:var(--sand-050);
+  --action-accent-bg:var(--saffron-500);
+  --action-accent-bg-hover:var(--saffron-600);
+  --action-accent-fg:var(--pine-950);
+  --action-secondary-bg:var(--sand-000);
+  --action-secondary-fg:var(--pine-800);
+  --action-ghost-fg:var(--pine-800);
+  --action-ghost-bg-hover:var(--pine-050);
+  --action-disabled-bg:var(--sand-300);
+  --action-disabled-fg:var(--sand-500);
+
+  /* Status */
+  --status-success-fg:var(--green-600);
+  --status-success-bg:var(--green-100);
+  --status-warning-fg:var(--amber-600);
+  --status-warning-bg:var(--amber-100);
+  --status-danger-fg:var(--red-600);
+  --status-danger-bg:var(--red-100);
+  --status-info-fg:var(--blue-600);
+  --status-info-bg:var(--blue-100);
+
+  /* Session modality colours — video vs audio is a core product distinction */
+  --mode-video-fg:var(--blue-600);
+  --mode-video-bg:var(--blue-100);
+  --mode-audio-fg:var(--saffron-700);
+  --mode-audio-bg:var(--saffron-100);
+}

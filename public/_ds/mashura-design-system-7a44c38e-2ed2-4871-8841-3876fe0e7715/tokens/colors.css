@@ -1,0 +1,49 @@
+/* Mashura palette — base values.
+   Deep pine "ink" for authority, warm sand paper for the page, saffron for action. */
+:root{
+  /* Pine (primary brand) */
+  --pine-950:#08211D;
+  --pine-900:#0C2C27;
+  --pine-800:#113A33;
+  --pine-700:#1A4E45;
+  --pine-600:#26665A;
+  --pine-400:#5A9285;
+  --pine-200:#B3CFC7;
+  --pine-100:#DCEAE5;
+  --pine-050:#EDF5F2;
+
+  /* Saffron (accent / action) */
+  --saffron-700:#A86A12;
+  --saffron-600:#C9820F;
+  --saffron-500:#E8A33D;
+  --saffron-400:#F2BC6B;
+  --saffron-200:#FADFB6;
+  --saffron-100:#FDF1DC;
+
+  /* Sand (neutral warm) */
+  --sand-000:#FFFFFF;
+  --sand-050:#FBF8F2;
+  --sand-100:#F7F2EA;
+  --sand-200:#EFE8DC;
+  --sand-300:#E3DCD0;
+  --sand-400:#CFC6B7;
+  --sand-500:#A9A093;
+  --sand-600:#7C746A;
+  --sand-700:#5C6B67;
+  --sand-800:#2E3A37;
+  --sand-900:#14201D;
+
+  /* Semantic hues */
+  --green-600:#2E7D5B;
+  --green-100:#E2F2EA;
+  --amber-600:#C9820F;
+  --amber-100:#FDF1DC;
+  --red-600:#B4402F;
+  --red-100:#FBE7E3;
+  --blue-600:#2C6E7F;
+  --blue-100:#E4F0F2;
+
+  /* Fixed overlays */
+  --overlay-ink:rgba(8,33,29,.55);
+  --overlay-frost:rgba(255,255,255,.72);
+}

@@ -1,0 +1,14 @@
+:root{
+  --duration-instant:90ms; /* @kind other */
+  --duration-fast:140ms; /* @kind other */
+  --duration-base:200ms; /* @kind other */
+  --duration-slow:320ms; /* @kind other */
+  --duration-enter:420ms; /* @kind other */
+
+  --ease-out:cubic-bezier(.2,.8,.2,1); /* @kind other */
+  --ease-in-out:cubic-bezier(.4,0,.2,1); /* @kind other */
+  --ease-in:cubic-bezier(.4,0,1,1); /* @kind other */
+
+  --lift-hover:-1px;
+  --press-scale:.985; /* @kind other */
+}

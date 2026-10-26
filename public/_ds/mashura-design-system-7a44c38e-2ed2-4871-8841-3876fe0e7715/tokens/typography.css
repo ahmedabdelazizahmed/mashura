@@ -1,0 +1,33 @@
+:root{
+  --font-display:"Tajawal","IBM Plex Sans Arabic",system-ui,sans-serif;
+  --font-sans:"IBM Plex Sans Arabic","Tajawal",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+
+  --weight-regular:400;
+  --weight-medium:500;
+  --weight-semibold:600;
+  --weight-bold:700;
+  --weight-black:800;
+
+  /* Sizes */
+  --size-display-1:56px;
+  --size-display-2:44px;
+  --size-h1:34px;
+  --size-h2:27px;
+  --size-h3:22px;
+  --size-body-lg:18px;
+  --size-body:16px;
+  --size-body-sm:14px;
+  --size-caption:13px;
+  --size-overline:12px;
+
+  /* Line heights — Arabic needs air; body sits at 1.75 */
+  --leading-display:1.15;
+  --leading-heading:1.3;
+  --leading-body:1.75;
+  --leading-tight:1.45;
+
+  /* Tracking — Arabic is never letter-spaced. Latin overline only. */
+  --tracking-none:0;
+  --tracking-overline:.08em;
+}
