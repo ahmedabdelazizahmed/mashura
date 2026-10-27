@@ -19,6 +19,16 @@ Arabic-first (RTL) consultation booking platform. Clients pick a consultation, p
 
 Online card payments through a gateway are **not** integrated yet (see [Roadmap](#roadmap)).
 
+## Screenshots
+
+Admin dashboard, bookings and payments (taken from the live deployment, with sample activity loaded from `supabase/seed-sample-data.sql`):
+
+| Overview | Bookings |
+|---|---|
+| ![Admin overview](docs/screenshots/admin-overview.png) | ![Bookings](docs/screenshots/admin-bookings.png) |
+
+![Payments and receiving details](docs/screenshots/admin-payments.png)
+
 ## Architecture
 
 ```mermaid
