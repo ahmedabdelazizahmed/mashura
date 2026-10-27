@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth'
 export type AdminView =
   | 'overview' | 'bookings' | 'types' | 'schedule'
   | 'clients' | 'leads' | 'payments' | 'notifications'
-  | 'employees' | 'permissions'
+  | 'employees' | 'permissions' | 'knowledge'
 
 // Sidebar is grouped into sections with subtle headers.
 type NavItem = { id: AdminView; label: string; icon: string }
@@ -22,12 +22,13 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { id: 'clients', label: 'العملاء', icon: 'user' },
       { id: 'payments', label: 'المدفوعات', icon: 'credit-card' },
       { id: 'notifications', label: 'الإشعارات', icon: 'bell' },
+      { id: 'knowledge', label: 'أسئلة المساعد', icon: 'message-circle' },
     ],
   },
   {
     title: 'الفريق والصلاحيات',
     items: [
-      { id: 'employees', label: 'الموظفون', icon: 'user' },
+      { id: 'employees', label: 'الفريق', icon: 'user' },
       { id: 'permissions', label: 'الصلاحيات', icon: 'shield-check' },
     ],
   },

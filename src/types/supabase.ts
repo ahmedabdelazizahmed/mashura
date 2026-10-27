@@ -1,4 +1,4 @@
-// Types mirror supabase/migrations/0001_init.sql + 0002_security_hardening.sql.
+// Types mirror supabase/migrations/0001_init.sql + 0002_security_hardening.sql + 0003_payments_and_knowledge.sql.
 // Regenerate later with:
 //   npx supabase gen types typescript --project-id <your-project-ref> > src/types/supabase.ts
 
@@ -9,6 +9,7 @@ export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' 
 export type PaymentStatus = 'pending' | 'paid' | 'refunded' | 'failed'
 export type PaymentMethod = 'card' | 'wallet' | 'cash'
 export type Mode = 'video' | 'audio' | 'in-person'
+export type SettingKey = 'pay_wallet_name' | 'pay_wallet_number' | 'pay_instapay' | 'pay_note'
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'converted' | 'closed'
 
 export interface Database {
@@ -196,6 +197,7 @@ export interface Database {
           status: PaymentStatus
           provider: string | null
           provider_ref: string | null
+          submitted_at: string | null
           paid_at: string | null
           created_at: string
         }
@@ -212,6 +214,35 @@ export interface Database {
           paid_at?: string | null
         }
         Update: Partial<Database['public']['Tables']['payments']['Insert']>
+        Relationships: []
+      }
+      site_settings: {
+        Row: { key: SettingKey; value: string; updated_at: string }
+        Insert: { key: SettingKey; value: string }
+        Update: Partial<Database['public']['Tables']['site_settings']['Insert']>
+        Relationships: []
+      }
+      kb_articles: {
+        Row: {
+          id: string
+          category: string
+          question: string
+          answer: string
+          keywords: string
+          is_active: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          category?: string
+          question: string
+          answer: string
+          keywords?: string
+          is_active?: boolean
+          sort_order?: number
+        }
+        Update: Partial<Database['public']['Tables']['kb_articles']['Insert']>
         Relationships: []
       }
       notifications: {
@@ -282,6 +313,14 @@ export interface Database {
       set_payment_status: {
         Args: { p_payment_id: string; p_status: string; p_provider_ref?: string | null }
         Returns: Database['public']['Tables']['payments']['Row']
+      }
+      submit_payment_reference: {
+        Args: { p_payment_id: string; p_reference: string }
+        Returns: Database['public']['Tables']['payments']['Row']
+      }
+      kb_search: {
+        Args: { p_query: string; p_limit?: number }
+        Returns: { id: string; category: string; question: string; answer: string; score: number }[]
       }
       capture_lead: {
         Args: { p_name: string; p_email: string; p_phone?: string | null; p_interest?: string | null; p_source?: string | null }

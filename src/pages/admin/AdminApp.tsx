@@ -11,6 +11,8 @@ import { useAllBookings, useClients, useLeads, useTypes, useAllPayments, useRule
 import type { TypeWithDurations } from '@/lib/api'
 import * as api from '@/lib/api'
 import { Employees, Permissions } from './EmployeesAndPermissions'
+import Knowledge from './Knowledge'
+import { PaySettingsCard } from './PaySettings'
 
 type Tone = 'brand' | 'neutral' | 'warning' | 'success' | 'danger'
 
@@ -38,6 +40,7 @@ export default function AdminApp() {
       {view === 'notifications' && <Notifications />}
       {view === 'employees' && <Employees />}
       {view === 'permissions' && <Permissions />}
+      {view === 'knowledge' && <Knowledge />}
     </AdminShell>
   )
 }
@@ -160,7 +163,7 @@ function AdminBookingRow({ b, onOpen }: { b: any; onOpen: (b: any) => void }) {
       </div>
       <span style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-body)' }}>{bookingTypeTitle(b)}</span>
       <span style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}><Icon name={modeIcon(b.mode)} size={15} />{modeAr(b.mode)}</span>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)' }}>{arDate(b.starts_at)} · {arTime(b.starts_at)}</span>
+      <span style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)' }}>{arDate(b.starts_at)} · {arTime(b.starts_at)}</span>
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-body-sm)', color: 'var(--text-title)' }}>{Number(b.price_amount)} ج.م</span>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Badge tone={STATUS_TONE[b.status]} dot={b.status === 'confirmed'}>{STATUS_AR[b.status]}</Badge>
@@ -218,7 +221,7 @@ function BookingDialog({ b, canWrite, onClose, onChanged }: { b: any; canWrite: 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             {inPerson
               ? <Input label="مكان المقابلة" value={loc} onChange={(e) => setLoc(e.target.value)} maxLength={300} />
-              : <Input label="رابط الجلسة (https://…)" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={500} dir="ltr" hint="بيظهر للعميل بعد التأكيد." />}
+              : <Input label="رابط الجلسة" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={500} dir="ltr" hint="لازم يبدأ بـ https، وبيظهر للعميل بعد التأكيد." />}
             <div><Button variant="secondary" size="sm" loading={busy} onClick={saveInfo}>احفظ {inPerson ? 'المكان' : 'الرابط'}</Button></div>
           </div>
         )}
@@ -774,39 +777,62 @@ function Leads() {
   )
 }
 
-// Payments — real list; staff record cash / wallet receipts ─────────────────────
+// Payments — wallet transfers wait here for confirmation; cash is confirmed on receipt ──
 function Payments() {
-  const { data: rows, loading, error } = useAllPayments()
+  const { data: rows, loading, error, refetch } = useAllPayments()
+  const { profile } = useAuth()
+  const canConfirm = ['owner', 'admin', 'reception'].includes(profile?.role ?? '')
+  const isAdmin = ['owner', 'admin'].includes(profile?.role ?? '')
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
   const list = rows ?? []
   const total = list.filter((p: any) => p.status === 'paid').reduce((s: number, p: any) => s + Number(p.amount), 0)
   const refunded = list.filter((p: any) => p.status === 'refunded').reduce((s: number, p: any) => s + Number(p.amount), 0)
+  const waiting = list.filter((p: any) => p.status === 'pending' && p.submitted_at)
   const pending = list.filter((p: any) => p.status === 'pending').length
   const tone = (st: string): Tone => (st === 'paid' ? 'success' : st === 'pending' ? 'warning' : 'danger')
+  const act = async (id: string, status: 'paid' | 'failed' | 'refunded') => {
+    setBusyId(id); setErr(null)
+    try { await api.setPaymentStatus(id, status); refetch() } catch (e) { setErr(api.friendlyError(e)) } finally { setBusyId(null) }
+  }
   return (
     <div className="adm-page">
-      <PageHead title="المدفوعات" sub="الدفع حاليًا يدوي (كاش أو تحويل محفظة): سجّل الاستلام من تفاصيل الحجز. الدفع الإلكتروني يُفعَّل مع العميل الفعلي." />
+      <PageHead title="المدفوعات" sub="التحويلات اللي العملاء سجّلوها بتستنى تأكيدك هنا. الكاش بتأكده لما تستلمه." />
+      {isAdmin && <PaySettingsCard />}
       {loading && <LoadingLine />}
       {error && <ErrorNote error={error} />}
+      {err && <p role="alert" style={{ color: 'var(--status-danger-fg)', marginBottom: 'var(--space-6)' }}>{err}</p>}
       {!loading && !error && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 'var(--space-6)', marginBottom: 'var(--space-9)' }}>
             <StatCard icon="credit-card" label="إجمالي المحصّل" value={`${total} ج.م`} />
-            <StatCard icon="bell" label="بانتظار الدفع" value={pending} />
+            <StatCard icon="bell" label="تحويلات بانتظار تأكيدك" value={waiting.length} sub={`${pending} دفعة لسه ما اتأكدتش`} />
             <StatCard icon="receipt" label="مرتجع" value={`${refunded} ج.م`} />
           </div>
           <Card padding="none" style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr .9fr .9fr .8fr .8fr', gap: 'var(--space-6)', padding: 'var(--space-6) var(--space-7)', fontSize: 'var(--size-caption)', color: 'var(--text-subtle)', minWidth: 720 }}>
-              <span>رقم الفاتورة</span><span>العميل</span><span>الطريقة</span><span>التاريخ</span><span>المبلغ</span><span>الحالة</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr .9fr 1fr .7fr .9fr 1.3fr', gap: 'var(--space-6)', padding: 'var(--space-6) var(--space-7)', fontSize: 'var(--size-caption)', color: 'var(--text-subtle)', minWidth: 960 }}>
+              <span>رقم الفاتورة</span><span>العميل</span><span>الطريقة</span><span>رقم العملية</span><span>المبلغ</span><span>الحالة</span><span style={{ textAlign: 'end' }}>إجراء</span>
             </div>
             {list.length === 0 && <p style={{ padding: 'var(--space-7)', color: 'var(--text-subtle)', fontSize: 'var(--size-body-sm)' }}>مفيش مدفوعات لسه.</p>}
             {list.map((p: any) => (
-              <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr .9fr .9fr .8fr .8fr', gap: 'var(--space-6)', alignItems: 'center', padding: 'var(--space-6) var(--space-7)', borderTop: '1px solid var(--border-subtle)', minWidth: 720 }}>
+              <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr .9fr 1fr .7fr .9fr 1.3fr', gap: 'var(--space-6)', alignItems: 'center', padding: 'var(--space-6) var(--space-7)', borderTop: '1px solid var(--border-subtle)', minWidth: 960, background: p.status === 'pending' && p.submitted_at ? 'var(--surface-brand-soft)' : undefined }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-caption)', color: 'var(--text-subtle)' }}>{p.invoice_no}</span>
                 <span style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-title)' }}>{p.bookings?.profiles?.name ?? '—'}</span>
                 <span style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)' }}>{PAYMENT_METHOD_AR[p.method] ?? p.method}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)' }}>{(p.paid_at ?? p.created_at).slice(0, 10)}</span>
+                <span dir="ltr" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-caption)', color: 'var(--text-title)', textAlign: 'end' }}>{p.provider_ref ?? '—'}</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-body-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-title)' }}>{Number(p.amount)} ج.م</span>
-                <Badge tone={tone(p.status)}>{PAYMENT_STATUS_AR[p.status] ?? p.status}</Badge>
+                <Badge tone={tone(p.status)}>{p.status === 'pending' && p.submitted_at ? 'بانتظار التأكيد' : PAYMENT_STATUS_AR[p.status] ?? p.status}</Badge>
+                <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  {canConfirm && p.status === 'pending' && (
+                    <>
+                      <Button size="sm" loading={busyId === p.id} onClick={() => act(p.id, 'paid')}>{p.method === 'cash' ? 'استلمت كاش' : 'أكّد الدفع'}</Button>
+                      {p.submitted_at && <Button size="sm" variant="ghost" disabled={busyId === p.id} onClick={() => act(p.id, 'failed')}>رفض</Button>}
+                    </>
+                  )}
+                  {canConfirm && p.status === 'paid' && (
+                    <Button size="sm" variant="ghost" disabled={busyId === p.id} onClick={() => act(p.id, 'refunded')}>رد المبلغ</Button>
+                  )}
+                </div>
               </div>
             ))}
           </Card>

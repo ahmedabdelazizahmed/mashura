@@ -32,6 +32,7 @@ export default function ClientApp() {
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [bookingRef, setBookingRef] = useState<string | null>(null)
+  const [paymentId, setPaymentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Once types load, honor a `?type=<slug>` deep link (landing/home) by
@@ -81,6 +82,7 @@ export default function ClientApp() {
         paymentMethod: draft.pm,
       })
       setBookingRef(booking.ref)
+      try { setPaymentId((await api.getPaymentForBooking(booking.id))?.id ?? null) } catch { setPaymentId(null) }
       setView('done')
       setToast('وصلنا طلب الحجز')
       setParams({}, { replace: true })
@@ -124,7 +126,7 @@ export default function ClientApp() {
         {(ORDER as readonly string[]).includes(view) && (
           <BookingFlow step={view as Step} draft={draft} set={set} next={next} back={back} submitting={submitting} onConfirm={confirm} types={types} />
         )}
-        {view === 'done' && <ConfirmationView draft={draft} bookingRef={bookingRef} onDone={() => setView('account')} />}
+        {view === 'done' && <ConfirmationView draft={draft} bookingRef={bookingRef} paymentId={paymentId} onDone={() => setView('account')} />}
         {view === 'account' && <Account onBook={() => startBooking(null)} />}
       </ClientShell>
 

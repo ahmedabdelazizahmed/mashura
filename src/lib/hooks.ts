@@ -68,3 +68,8 @@ export const useSlotsRange = (days = 14) =>
     const to = new Date(from); to.setDate(to.getDate() + days)
     return api.getAllSlots(from, to)
   }, [days])
+
+// ── payments ───────────────────────────────────────────────────────────────
+export const usePaySettings = () => useAsync(() => api.getPaySettings(), [])
+export const useKbArticles = () => useAsync(() => api.getKbArticles(), [])
+export const useTeam = () => useAsync(() => api.getTeam(), [])

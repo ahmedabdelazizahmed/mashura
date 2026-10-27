@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { types as fallbackTypes } from '@/lib/data'
+import AssistantIcon from '@/components/AssistantIcon'
 import { useTypes, useOpenSlots } from '@/lib/hooks'
 import { toConsultationType, validStarts, cairoDayKey } from '@/lib/adapt'
 import { useAuth } from '@/lib/auth'
@@ -103,6 +104,7 @@ const FAQ = [
   ['إزاي أحجز استشارة؟', 'اعمل حساب، اختار النوع والمدة، وبعدين اختار ميعاد من المواعيد المتاحة. أو اكتب للمساعد الذكي الميعاد اللي يناسبك وهو يجهّزه.'],
   ['أقدر ألغي الحجز؟', 'أيوه، من حسابك تقدر تشوف حجوزاتك وتلغيها، والميعاد بيرجع متاح.'],
   ['الجلسة بتتم إزاي؟', 'فيديو أو صوت للاستشارات، ووجهًا لوجه في المقابلة.'],
+  ['إزاي أدفع؟', 'كاش وقت الجلسة، أو تحويل على محفظة إلكترونية أو إنستا باي. بعد التحويل بتكتب رقم العملية في حجزك ونأكّد الدفع ونبعتلك فاتورة.'],
   ['إزاي أعرف السعر؟', 'السعر بيظهر قبل التأكيد حسب نوع الاستشارة ومدتها.'],
 ]
 
@@ -116,7 +118,6 @@ export default function Landing() {
 
   return (
     <div className="ld">
-      <div className="demo-note">مشروع تجريبي لعرض فكرة نظام حجز الاستشارات مع مساعد ذكي</div>
 
       <header className="nav">
         <div className="wrap nav-in">
@@ -229,13 +230,13 @@ export default function Landing() {
           <Link to="/privacy">الخصوصية</Link><Link to="/terms">الشروط</Link>
           {CONTACT_EMAIL && <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>}
         </nav>
-        <span>© {year} مشورة. مشروع تجريبي.</span>
+        <span>© {year} مشورة. جميع الحقوق محفوظة.</span>
       </footer>
 
       {/* Mobile: booking is always one thumb away */}
       <div className="sticky-cta">
         <Link to="/app" className="pill pill-solid">احجز مشورة</Link>
-        <button type="button" className="pill pill-line" onClick={openAssistant}>اسأل المساعد</button>
+        <button type="button" className="pill pill-line" onClick={openAssistant}><AssistantIcon size={22} bubble="#0A6B45" spark="#fff" />اسأل المساعد</button>
       </div>
     </div>
   )

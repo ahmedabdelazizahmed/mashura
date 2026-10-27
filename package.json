@@ -7,7 +7,10 @@
     "dev": "vite --host",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node tests/run.mjs",
+    "test:db": "node tests/db/security.test.mjs && node tests/db/payments-kb.test.mjs && node tests/db/sample-data.test.mjs",
+    "test:assistant": "node tests/assistant/assistant.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
@@ -16,11 +19,14 @@
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.12",
     "@types/node": "^20.19.43",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
-  }
+  },
+  "description": "Mashura — Arabic consultation booking platform with a chat assistant (React, TypeScript, Supabase)",
+  "license": "MIT"
 }

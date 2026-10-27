@@ -6,6 +6,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import * as api from '@/lib/api'
 import { respond, initialState, WELCOME, type Msg, type State, type Deps, type CatalogType, type OpenSlot } from '@/lib/assistantEngine'
 import { arDate, arTime } from '@/lib/adapt'
+import AssistantIcon from './AssistantIcon'
 import '@/styles/assistant.css'
 
 const STORE = 'mashura-assistant-v1'
@@ -98,6 +99,14 @@ export default function Assistant() {
       return { ref: b.ref }
     },
     myBookings: async () => (await api.getMyBookings()).map((b: any) => ({ ref: b.ref, starts_at: b.starts_at, typeTitle: b.consultation_types?.title ?? '—', status: b.status })),
+    // Knowledge base: retrieval runs in the database (kb_search); the optional model only phrases it.
+    kb: (q) => api.kbSearch(q, 3),
+    kbAnswer: AI_ON ? async (q, passages) => {
+      const { data, error } = await supabase.functions.invoke('assistant-answer', {
+        body: { question: q.slice(0, 300), passages: passages.map((p) => ({ q: p.question, a: p.answer })) },
+      })
+      return error ? null : ((data as any)?.answer ?? null)
+    } : undefined,
     // Optional language model (Supabase Edge Function). It only returns {intent, slots};
     // booking itself always goes through the same validated server function.
     llm: AI_ON ? async (t, st, today) => {
@@ -148,13 +157,14 @@ export default function Assistant() {
     <>
       {!open && (
         <button type="button" className={'asst-fab' + (pathname === '/' ? ' lift' : '')} onClick={() => setOpen(true)} aria-label="افتح مساعد الحجز">
-          <span className="dot" aria-hidden="true" />اسأل المساعد
+          <AssistantIcon size={28} />اسأل المساعد
         </button>
       )}
       {open && (
-        <section className="asst-panel" role="dialog" aria-label="مساعد الحجز" dir="rtl">
+        <section className="asst-panel" role="dialog" aria-label="مساعد مشورة" dir="rtl">
           <div className="asst-head">
-            <b>مساعد الحجز<small>يجهّز لك الحجز من كلامك</small></b>
+            <span className="asst-avatar"><AssistantIcon size={26} bubble="#0A7A4F" spark="#fff" /></span>
+            <b>مساعد مشورة<small>بيجاوب أسئلتك ويجهّز لك الحجز</small></b>
             <button type="button" onClick={() => { setMsgs([WELCOME]); setState(initialState()) }} aria-label="محادثة جديدة" title="محادثة جديدة">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
             </button>

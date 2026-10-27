@@ -3,7 +3,7 @@
 // call site to render error state.
 
 import { supabase } from './supabase'
-import type { Database, Mode, BookingStatus, LeadStatus } from '@/types/supabase'
+import type { Database, Mode, BookingStatus, LeadStatus, SettingKey } from '@/types/supabase'
 
 type T = Database['public']['Tables']
 
@@ -98,9 +98,12 @@ const RPC_ERRORS: Record<string, string> = {
   cannot_change_self: 'مينفعش تغيّر صلاحيتك بنفسك.',
   owner_only: 'الصلاحية دي للمالك بس.',
   last_owner: 'لازم يفضل مالك واحد على الأقل.',
-  user_not_found: 'مفيش مستخدم بالإيميل ده.',
+  user_not_found: 'مفيش حساب بالإيميل ده. لازم الشخص يعمل حساب في الموقع الأول.',
+  invalid_role: 'الدور مش صحيح.',
   slot_booked: 'الميعاد ده محجوز.',
   invalid_range: 'الفترة المطلوبة مش صحيحة.',
+  invalid_reference: 'اكتب رقم العملية صح (من ٣ لـ٦٠ حرف أو رقم).',
+  payment_not_found: 'الدفعة دي مش موجودة.',
 }
 
 /** Turn a Supabase/Postgres error into a short Arabic message. */
@@ -127,7 +130,7 @@ export async function createBooking(input: NewBookingInput) {
 export async function getMyBookings() {
   const { data, error } = await supabase
     .from('bookings')
-    .select('*, consultation_types(title, slug, category), payments(id, status, method, amount, invoice_no, paid_at)')
+    .select('*, consultation_types(title, slug, category), payments(id, status, method, amount, invoice_no, paid_at, provider_ref, submitted_at)')
     .order('starts_at', { ascending: false })
   if (error) throw error
   return data ?? []
@@ -331,6 +334,70 @@ export async function generateSlots(from: string, to: string) {
   return data as number
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Payments — receiving details + client-recorded transfers
+// ────────────────────────────────────────────────────────────────────────────
+export type PaySettings = Record<SettingKey, string>
+const EMPTY_SETTINGS: PaySettings = { pay_wallet_name: '', pay_wallet_number: '', pay_instapay: '', pay_note: '' }
+
+export async function getPaySettings(): Promise<PaySettings> {
+  const { data, error } = await supabase.from('site_settings').select('key, value')
+  if (error) throw error
+  const out = { ...EMPTY_SETTINGS }
+  for (const r of data ?? []) out[r.key as SettingKey] = r.value
+  return out
+}
+
+export async function savePaySettings(values: Partial<PaySettings>) {
+  const rows = (Object.keys(values) as SettingKey[]).map((key) => ({ key, value: (values[key] ?? '').trim() }))
+  if (rows.length === 0) return
+  const { error } = await supabase.from('site_settings').upsert(rows, { onConflict: 'key' })
+  if (error) throw error
+}
+
+/** Client records the reference number of a wallet / InstaPay transfer. Staff then confirms. */
+export async function submitPaymentReference(paymentId: string, reference: string) {
+  const { data, error } = await supabase.rpc('submit_payment_reference', { p_payment_id: paymentId, p_reference: reference })
+  if (error) throw error
+  return data as T['payments']['Row']
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Knowledge base (assistant retrieval)
+// ────────────────────────────────────────────────────────────────────────────
+export interface KbHit { id: string; category: string; question: string; answer: string; score: number }
+
+export async function kbSearch(query: string, limit = 3): Promise<KbHit[]> {
+  const { data, error } = await supabase.rpc('kb_search', { p_query: query, p_limit: limit })
+  if (error) throw error
+  return (data ?? []).map((r: any) => ({ ...r, score: Number(r.score) }))
+}
+
+export async function getKbArticles() {
+  const { data, error } = await supabase.from('kb_articles').select('*').order('sort_order').order('question')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function upsertKbArticle(input: T['kb_articles']['Insert']) {
+  const { error } = await supabase.from('kb_articles').upsert(input, { onConflict: input.id ? 'id' : 'question' })
+  if (error) throw error
+}
+
+export async function deleteKbArticle(id: string) {
+  const { error } = await supabase.from('kb_articles').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function getTeam() {
+  const { data, error } = await supabase
+    .from('profiles').select('id, name, email, role, created_at')
+    .in('role', ['owner', 'admin', 'reception', 'viewer'])
+    .order('created_at')
+  if (error) throw error
+  return data ?? []
+}
+
 export async function setUserRole(email: string, role: string) {
   const { data, error } = await supabase.rpc('set_user_role', { p_email: email, p_role: role })
   if (error) throw error
@@ -347,6 +414,15 @@ export async function updateExpert(id: string, patch: { name: string; title: str
 // ────────────────────────────────────────────────────────────────────────────
 export async function getExpert() {
   const { data, error } = await supabase.from('experts').select('*').limit(1).maybeSingle()
+  if (error) throw error
+  return data
+}
+
+/** The payment row of one of the caller's bookings (RLS: clients see only their own). */
+export async function getPaymentForBooking(bookingId: string) {
+  const { data, error } = await supabase
+    .from('payments').select('id, status, method, amount, invoice_no, provider_ref, submitted_at')
+    .eq('booking_id', bookingId).maybeSingle()
   if (error) throw error
   return data
 }

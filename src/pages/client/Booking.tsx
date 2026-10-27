@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { Card, Badge, Button, Icon, Input, Checkbox, Stepper } from '@/lib/ui'
 import { useOpenSlots } from '@/lib/hooks'
+import PaymentInstructions from '@/components/PaymentInstructions'
 import { groupSlotsByDay } from '@/lib/adapt'
 import { Link } from 'react-router-dom'
 import type { BookingDraft, Mode, ConsultationType } from '@/types/data'
@@ -418,9 +419,10 @@ function ConfigurePanel({ draft, set, types }: { draft: BookingDraft; set: (p: P
 }
 
 // ------- Step 2 content: Pay -------
-// Payments are manual for now: the consultant records the payment after the
-// session is agreed. Online card payment is shown below as a disabled preview.
+// Two methods: cash at the session, or a wallet / InstaPay transfer whose
+// reference the client records after booking (staff then confirm it).
 function PayPanel({ draft, set }: { draft: BookingDraft; set: (p: Partial<BookingDraft>) => void }) {
+  const amount = computePrice(draft)
   return (
     <>
       <section>
@@ -430,29 +432,24 @@ function PayPanel({ draft, set }: { draft: BookingDraft; set: (p: Partial<Bookin
             value={draft.pm}
             onChange={(v) => set({ pm: v })}
             options={[
-              { value: 'cash', label: 'كاش', icon: 'phone' },
-              { value: 'wallet', label: 'تحويل محفظة', icon: 'phone' },
+              { value: 'cash', label: 'كاش وقت الجلسة', icon: 'receipt' },
+              { value: 'wallet', label: 'تحويل محفظة / إنستا باي', icon: 'phone' },
             ]}
           />
           <p style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)', marginTop: 'var(--space-5)' }}>
-            مفيش دفع دلوقتي. المستشار هيأكّد الحجز ويتفق معاك على طريقة السداد.
+            {draft.pm === 'cash'
+              ? `هتدفع ${amount} ج.م كاش وقت الجلسة، ومفيش حاجة تتدفع دلوقتي.`
+              : 'بعد تأكيد الحجز بتحوّل المبلغ وتكتب رقم العملية، وإحنا نأكّد الدفع ونبعتلك إشعار وفاتورة.'}
           </p>
         </div>
       </section>
 
-      <section>
-        <SectionHeader n={2} title="الدفع الإلكتروني" />
-        <div style={{ maxWidth: 'var(--width-form)', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', opacity: .55 }} aria-disabled="true">
-          <Input label="رقم الكارت" placeholder="•••• •••• •••• ••••" icon="credit-card" disabled />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'var(--space-5)' }}>
-            <Input label="تاريخ الانتهاء" placeholder="شهر/سنة" disabled />
-            <Input label="رمز الأمان" placeholder="•••" disabled />
-          </div>
-        </div>
-        <p style={{ marginTop: 'var(--space-5)', display: 'inline-flex', gap: 8, alignItems: 'center', padding: '8px 14px', borderRadius: 'var(--radius-md)', background: 'var(--saffron-100)', color: 'var(--saffron-700)', fontSize: 'var(--size-body-sm)', fontWeight: 'var(--weight-medium)' }}>
-          <Icon name="info" size={16} />شكل توضيحي — الدفع الإلكتروني يُفعَّل مع العميل الفعلي.
-        </p>
-      </section>
+      {draft.pm === 'wallet' && (
+        <section>
+          <SectionHeader n={2} title="بيانات التحويل" />
+          <div style={{ maxWidth: 520 }}><PaymentInstructions amount={amount} /></div>
+        </section>
+      )}
 
       <section>
         <Checkbox label="موافق على شروط الحجز"
@@ -466,7 +463,7 @@ function PayPanel({ draft, set }: { draft: BookingDraft; set: (p: Partial<Bookin
 }
 
 // ------- Confirmation view (step 3 in stepper) -------
-export function ConfirmationView({ draft, bookingRef, onDone }: { draft: BookingDraft; bookingRef: string | null; onDone: () => void }) {
+export function ConfirmationView({ draft, bookingRef, paymentId, onDone }: { draft: BookingDraft; bookingRef: string | null; paymentId?: string | null; onDone: () => void }) {
   const rows: [string, ReactNode][] = [
     ['الخدمة', draft.type ? draft.type.title : '—'],
     ['الطريقة', modeLabel(draft.mode)],
@@ -492,6 +489,11 @@ export function ConfirmationView({ draft, bookingRef, onDone }: { draft: Booking
             </div>
           ))}
         </Card>
+        {draft.pm === 'wallet' && (
+          <div style={{ marginTop: 'var(--space-8)', textAlign: 'start' }}>
+            <PaymentInstructions amount={computePrice(draft)} paymentId={paymentId} />
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 'var(--space-5)', justifyContent: 'center', marginTop: 'var(--space-8)' }}>
           <Button icon="calendar" onClick={onDone}>شوف حجوزاتي</Button>
         </div>

@@ -1,20 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Badge, Button, Icon, IconButton, Tabs, Dialog, Switch, Select, Input } from '@/lib/ui'
+import { Card, Badge, Button, Icon, IconButton, Tabs, Dialog, Input } from '@/lib/ui'
 import { useAuth } from '@/lib/auth'
 import { useMyBookings, useMyNotifications } from '@/lib/hooks'
-import { toDisplayBooking, isActiveStatus, MODE_AR, modeIconName, PAYMENT_METHOD_AR, PAYMENT_STATUS_AR, type DisplayBooking as Booking } from '@/lib/adapt'
+import { toDisplayBooking, isActiveStatus, MODE_AR, modeIconName, PAYMENT_METHOD_AR, paymentLabel, type DisplayBooking as Booking } from '@/lib/adapt'
 import { supabase } from '@/lib/supabase'
 import * as api from '@/lib/api'
+import PaymentInstructions from '@/components/PaymentInstructions'
+import { printInvoice } from '@/lib/invoice'
 
-/** Marks a section that is only a visual mock-up for now. */
-function DemoNote({ text = 'شكل توضيحي — هذه الميزة تُفعَّل مع العميل الفعلي.' }: { text?: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 'var(--space-6)', background: 'var(--saffron-100)', color: 'var(--saffron-700)', borderRadius: 'var(--radius-md)', fontSize: 'var(--size-body-sm)', fontWeight: 'var(--weight-medium)' }}>
-      <Icon name="info" size={16} />{text}
-    </div>
-  )
-}
 const openAssistant = () => window.dispatchEvent(new Event('mashura:open-assistant'))
 const openUrl = (u: string) => window.open(u, '_blank', 'noopener,noreferrer')
 
@@ -23,11 +17,9 @@ interface Props { onBook: () => void }
 const SECTIONS = [
   { id: 'overview', label: 'نظرة عامة', icon: 'briefcase' },
   { id: 'bookings', label: 'الحجوزات', icon: 'calendar' },
-  { id: 'receipts', label: 'المدفوعات', icon: 'receipt' },
+  { id: 'receipts', label: 'المدفوعات والفواتير', icon: 'receipt' },
   { id: 'notifications', label: 'الإشعارات', icon: 'bell' },
   { id: 'profile', label: 'البروفايل', icon: 'user' },
-  { id: 'payments', label: 'طرق الدفع', icon: 'credit-card' },
-  { id: 'settings', label: 'الإعدادات', icon: 'shield-check' },
   { id: 'help', label: 'المساعدة', icon: 'message-circle' },
 ] as const
 type Section = (typeof SECTIONS)[number]['id']
@@ -39,11 +31,9 @@ export default function Account({ onBook }: Props) {
   const titles: Record<Section, [string, string]> = {
     overview: [`أهلاً ${me.name.split(' ')[0]}`, 'ملخص سريع لحجوزاتك ونشاطك مع مشورة.'],
     bookings: ['حجوزاتي', 'كل حجوزاتك القادمة والفايتة في مكان واحد.'],
-    receipts: ['المدفوعات', 'حالة الدفع لكل حجز.'],
+    receipts: ['المدفوعات والفواتير', 'حالة الدفع لكل حجز وفواتيرك.'],
     profile: ['البروفايل الشخصي', 'بياناتك اللي بتظهر للمستشار قبل الجلسة.'],
-    payments: ['طرق الدفع', 'الكروت والمحافظ المحفوظة للحجوزات الجاية.'],
     notifications: ['الإشعارات', 'كل الأحداث المتعلقة بحسابك وحجوزاتك.'],
-    settings: ['الإعدادات', 'التنبيهات، اللغة، والمنطقة الزمنية.'],
     help: ['المساعدة', 'أسئلة شائعة أو تواصل مباشر معانا.'],
   }
   const [title, sub] = titles[section]
@@ -65,9 +55,7 @@ export default function Account({ onBook }: Props) {
           {section === 'bookings' && <Bookings onBook={onBook} />}
           {section === 'receipts' && <Receipts />}
           {section === 'profile' && <Profile />}
-          {section === 'payments' && <PaymentMethods />}
           {section === 'notifications' && <Notifications />}
-          {section === 'settings' && <Settings />}
           {section === 'help' && <Help />}
         </div>
       </div>
@@ -301,7 +289,8 @@ function BookingDetailsDialog({ booking, onClose, onCancel }: { booking: Booking
     ['الحالة', booking.status],
     ...(booking.topic ? [['موضوع المشورة', booking.topic] as [string, string]] : []),
     ...(booking.location ? [['المكان', booking.location] as [string, string]] : []),
-    ...(booking.paymentMethod ? [['طريقة الدفع', PAYMENT_METHOD_AR[booking.paymentMethod] ?? booking.paymentMethod] as [string, string], ['حالة الدفع', PAYMENT_STATUS_AR[booking.paymentStatus ?? ''] ?? '—'] as [string, string]] : []),
+    ...(booking.paymentMethod ? [['طريقة الدفع', PAYMENT_METHOD_AR[booking.paymentMethod] ?? booking.paymentMethod] as [string, string], ['حالة الدفع', paymentLabel(booking)] as [string, string]] : []),
+    ...(booking.invoiceNo && booking.paymentStatus === 'paid' ? [['رقم الفاتورة', booking.invoiceNo] as [string, string]] : []),
   ]
   return (
     <Dialog open dir="rtl" onClose={onClose} title={t.title} description={`${booking.day} — ${booking.time}`}
@@ -319,6 +308,9 @@ function BookingDetailsDialog({ booking, onClose, onCancel }: { booking: Booking
             <span style={{ fontSize: 'var(--size-body-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-title)', textAlign: 'end' }}>{v}</span>
           </div>
         ))}
+        {isUpcoming && booking.paymentMethod === 'wallet' && booking.paymentStatus === 'pending' && booking.paymentId && (
+          <PaymentInstructions amount={booking.price} paymentId={booking.paymentId} reference={booking.paymentRef} submittedAt={booking.paymentSubmittedAt} />
+        )}
         {isUpcoming && (
           <div style={{ padding: 'var(--space-6)', borderRadius: 'var(--radius-md)', background: 'var(--surface-brand-soft)', fontSize: 'var(--size-body-sm)', color: 'var(--text-body)', display: 'flex', gap: 'var(--space-5)' }}>
             <Icon name="info" size={18} />
@@ -332,13 +324,13 @@ function BookingDetailsDialog({ booking, onClose, onCancel }: { booking: Booking
 
 function Receipts() {
   const { data: rows } = useMyBookings()
+  const { profile } = useAuth()
   const mine: Booking[] = (rows ?? []).map(toDisplayBooking).filter((b) => b.paymentMethod)
   const paid = mine.filter((b) => b.paymentStatus === 'paid')
   const total = paid.reduce((s, b) => s + b.price, 0)
   const cell = { fontSize: 'var(--size-body-sm)' } as const
   return (
     <>
-      <DemoNote text="الدفع حاليًا يدوي (كاش أو تحويل محفظة) ويسجّله المستشار. الدفع الإلكتروني وتحميل الفواتير يُفعَّلان مع العميل الفعلي." />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 'var(--space-6)', marginBottom: 'var(--space-8)' }}>
         <Card padding="lg"><div style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)' }}>عدد المدفوعات</div><div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-h2)', fontWeight: 'var(--weight-semibold)', marginTop: 'var(--space-4)' }}>{paid.length}</div></Card>
         <Card padding="lg"><div style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)' }}>إجمالي المدفوع</div><div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-h2)', fontWeight: 'var(--weight-semibold)', marginTop: 'var(--space-4)' }}>{total} ج.م</div></Card>
@@ -346,12 +338,15 @@ function Receipts() {
       <Card padding="none" style={{ overflowX: 'auto' }}>
         {mine.length === 0 && <p style={{ ...cell, color: 'var(--text-subtle)', textAlign: 'center', padding: 'var(--space-9)' }}>مفيش مدفوعات لسه.</p>}
         {mine.map((b, i) => (
-          <div key={b.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(110px,130px) minmax(120px,1fr) minmax(110px,140px) 90px minmax(100px,120px)', gap: 'var(--space-6)', alignItems: 'center', padding: 'var(--space-6) var(--space-7)', borderTop: i ? '1px solid var(--border-subtle)' : 'none', minWidth: 640 }}>
+          <div key={b.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(110px,130px) minmax(120px,1fr) minmax(110px,140px) 90px minmax(130px,150px) 90px', gap: 'var(--space-6)', alignItems: 'center', padding: 'var(--space-6) var(--space-7)', borderTop: i ? '1px solid var(--border-subtle)' : 'none', minWidth: 760 }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-caption)', color: 'var(--text-subtle)' }}>{b.id.toUpperCase()}</span>
             <span style={{ ...cell, color: 'var(--text-title)', fontWeight: 'var(--weight-medium)' }}>{b.typeTitle}</span>
             <span style={{ ...cell, color: 'var(--text-muted)' }}>{b.day}</span>
             <span style={{ ...cell, fontFamily: 'var(--font-mono)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-title)' }}>{b.price} ج.م</span>
-            <Badge tone={b.paymentStatus === 'paid' ? 'success' : b.paymentStatus === 'failed' || b.paymentStatus === 'refunded' ? 'danger' : 'neutral'}>{PAYMENT_STATUS_AR[b.paymentStatus ?? ''] ?? '—'}</Badge>
+            <Badge tone={b.paymentStatus === 'paid' ? 'success' : b.paymentStatus === 'failed' || b.paymentStatus === 'refunded' ? 'danger' : b.paymentSubmittedAt ? 'brand' : 'neutral'}>{paymentLabel(b)}</Badge>
+            {b.paymentStatus === 'paid' && b.invoiceNo
+              ? <Button size="sm" variant="secondary" onClick={() => printInvoice({ invoiceNo: b.invoiceNo!, bookingRef: b.id.toUpperCase(), clientName: profile?.name ?? '', clientEmail: profile?.email ?? '', service: b.typeTitle, when: `${b.day} — ${b.time}`, minutes: b.minutes, method: PAYMENT_METHOD_AR[b.paymentMethod ?? ''] ?? '', amount: b.price, paidAt: b.paidAt })}>الفاتورة</Button>
+              : <span />}
           </div>
         ))}
       </Card>
@@ -407,63 +402,6 @@ function Profile() {
   )
 }
 
-function PaymentMethods() {
-  const [defaultId, setDefaultId] = useState('c1-visa')
-  const cards = [
-    { id: 'c1-visa', brand: 'Visa', last4: '4242', exp: '12/28', type: 'card' as const },
-    { id: 'c1-mc', brand: 'Mastercard', last4: '8817', exp: '06/27', type: 'card' as const },
-    { id: 'c1-vf', brand: 'فودافون كاش', last4: '5678', exp: '', type: 'wallet' as const },
-  ]
-  return (
-    <>
-      <DemoNote text="شكل توضيحي بأمثلة وهمية — حفظ الكروت والدفع الإلكتروني يُفعَّلان مع العميل الفعلي وبوابة دفع معتمدة." />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-7)' }}>
-        <div>
-          <h3 style={{ fontSize: 'var(--size-h3)' }}>الكروت والمحافظ المحفوظة</h3>
-          <p style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)', marginTop: 'var(--space-3)' }}>الطريقة الأساسية هتُستخدم تلقائيًا وقت الحجز.</p>
-        </div>
-        <Button icon="plus" disabled>أضف طريقة دفع</Button>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 'var(--space-6)' }}>
-        {cards.map((c) => {
-          const isCard = c.type === 'card'
-          return (
-            <Card key={c.id} padding="lg" selected={defaultId === c.id} style={{ cursor: 'pointer' }} onClick={() => setDefaultId(c.id)}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <span style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: isCard ? 'var(--mode-video-bg)' : 'var(--mode-audio-bg)', color: isCard ? 'var(--mode-video-fg)' : 'var(--mode-audio-fg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name={isCard ? 'credit-card' : 'phone'} size={22} />
-                </span>
-                {defaultId === c.id && <Badge tone="brand" dot>الأساسية</Badge>}
-              </div>
-              <div style={{ marginTop: 'var(--space-6)' }}>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-body-lg)', color: 'var(--text-title)', fontWeight: 'var(--weight-semibold)' }}>
-                  {isCard ? `•••• •••• •••• ${c.last4}` : `${c.brand} — ${c.last4}`}
-                </div>
-                <div style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)', marginTop: 'var(--space-3)' }}>
-                  {c.brand}{c.exp ? ` · تنتهي ${c.exp}` : ''}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 'var(--space-4)', marginTop: 'var(--space-7)', paddingTop: 'var(--space-6)', borderTop: '1px solid var(--border-subtle)' }}>
-                <Button variant="ghost" size="sm" disabled>تعديل</Button>
-                <Button variant="ghost" size="sm" disabled>إزالة</Button>
-              </div>
-            </Card>
-          )
-        })}
-      </div>
-      <Card padding="lg" style={{ marginTop: 'var(--space-8)', background: 'var(--surface-brand-soft)', border: 'none' }}>
-        <div style={{ display: 'flex', gap: 'var(--space-5)', alignItems: 'flex-start' }}>
-          <Icon name="shield-check" size={22} />
-          <div>
-            <strong style={{ display: 'block', color: 'var(--pine-800)', marginBottom: 4 }}>ملاحظة أمان</strong>
-            <p style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-body)', margin: 0 }}>الموقع ما بيطلبش ولا بيحفظ بيانات كروت. عند تفعيل الدفع الإلكتروني هيتم عبر بوابة دفع معتمدة.</p>
-          </div>
-        </div>
-      </Card>
-    </>
-  )
-}
-
 function Notifications() {
   const { data, loading, error, refetch } = useMyNotifications()
   const [filter, setFilter] = useState('all')
@@ -506,51 +444,11 @@ function Notifications() {
   )
 }
 
-function Settings() {
-  const [waBefore, setWaBefore] = useState(true)
-  const [emailConfirm, setEmailConfirm] = useState(true)
-  const [newSlots, setNewSlots] = useState(false)
-  const [marketing, setMarketing] = useState(false)
-  return (
-    <>
-    <DemoNote text="شكل توضيحي — حفظ هذه الإعدادات يُفعَّل مع العميل الفعلي." />
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 'var(--space-7)', alignItems: 'start' }}>
-      <Card padding="lg">
-        <h3 style={{ fontSize: 'var(--size-h3)', marginBottom: 'var(--space-6)' }}>الإشعارات</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-          <Switch label="تنبيه واتساب قبل الميعاد" description="رسالة قبل الجلسة بساعة" checked={waBefore} onChange={(e) => setWaBefore(e.target.checked)} />
-          <div style={{ height: 1, background: 'var(--border-subtle)' }} />
-          <Switch label="تأكيد على الإيميل" description="التأكيد والفاتورة واللينك" checked={emailConfirm} onChange={(e) => setEmailConfirm(e.target.checked)} />
-          <div style={{ height: 1, background: 'var(--border-subtle)' }} />
-          <Switch label="المواعيد الجديدة" description="نقول لك أول ما مواعيد جديدة تفتح" checked={newSlots} onChange={(e) => setNewSlots(e.target.checked)} />
-          <div style={{ height: 1, background: 'var(--border-subtle)' }} />
-          <Switch label="نصائح ومحتوى شهري" description="مقال أو اتنين في الشهر — ما فيش سبام" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} />
-        </div>
-      </Card>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-7)' }}>
-        <Card padding="lg">
-          <h3 style={{ fontSize: 'var(--size-h3)', marginBottom: 'var(--space-6)' }}>اللغة والمنطقة الزمنية</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-            <Select label="اللغة" options={['العربية', 'English']} />
-            <Select label="المنطقة الزمنية" options={['القاهرة (GMT+2)', 'الرياض (GMT+3)', 'دبي (GMT+4)']} />
-          </div>
-        </Card>
-        <Card padding="lg" style={{ borderColor: 'var(--status-danger-fg)' }}>
-          <h3 style={{ fontSize: 'var(--size-h3)', color: 'var(--status-danger-fg)' }}>منطقة الخطر</h3>
-          <p style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-muted)', margin: 'var(--space-4) 0 var(--space-6)' }}>حذف الحساب بيمسح كل بياناتك ومش هينفع رجوع.</p>
-          <Button variant="danger" size="sm" icon="x" disabled>اطلب حذف الحساب</Button>
-        </Card>
-      </div>
-    </div>
-    </>
-  )
-}
-
 function Help() {
   const faqs = [
     { q: 'إزاي ألغي حجز؟', a: 'من قسم الحجوزات، اضغط على أيقونة الإلغاء بجانب الحجز. الميعاد بيرجع متاح لغيرك.' },
     { q: 'مفيش رابط للجلسة؟', a: 'الرابط بيظهر في تفاصيل الحجز بعد ما المستشار يأكّد الحجز.' },
-    { q: 'الدفع بيتم إزاي؟', a: 'حاليًا الدفع يدوي (كاش أو تحويل محفظة) ويسجّله المستشار. الدفع الإلكتروني يُفعَّل لاحقًا.' },
+    { q: 'الدفع بيتم إزاي؟', a: 'تختار وقت الحجز: كاش وقت الجلسة، أو تحويل على المحفظة / إنستا باي. لو حوّلت، افتح الحجز واكتب رقم العملية وإحنا نأكّد الدفع ونبعتلك إشعار وفاتورة.' },
     { q: 'أقدر أحجز من غير ما أدخل الموقع؟', a: 'اكتب للمساعد الذكي (الزرار الأخضر تحت) الميعاد اللي يناسبك وهيجهّز لك الحجز.' },
   ]
   return (

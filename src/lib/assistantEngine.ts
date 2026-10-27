@@ -3,7 +3,7 @@
 // price/time, and only an explicit "yes" from the user calls createBooking,
 // which runs through the same server-side checks as the normal booking flow.
 
-import { parseMessage, cairoKey, addDays, cairoToInstant, type Slots, type AMode, type Parsed, type Intent } from './assistantNlu'
+import { parseMessage, normalize, cairoKey, addDays, cairoToInstant, type Slots, type AMode, type Parsed, type Intent } from './assistantNlu'
 import { validStarts, arDate, arTime, cairoDayKey } from './adapt'
 
 export interface CatalogType {
@@ -19,6 +19,8 @@ export interface State { slots: Slots; proposal?: Proposal | null; awaiting: 'co
 export interface Chip { label: string; send?: string; href?: string }
 export interface Msg { role: 'bot' | 'user'; text: string; chips?: Chip[] }
 
+export interface KbPassage { id: string; category: string; question: string; answer: string; score: number }
+
 export interface Deps {
   types: CatalogType[]
   getSlots(): Promise<OpenSlot[]>
@@ -26,6 +28,10 @@ export interface Deps {
   book(i: { typeId: string; minutes: number; mode: AMode; startsAt: string; topic?: string }): Promise<{ ref: string }>
   myBookings(): Promise<{ ref: string; starts_at: string; typeTitle: string; status: string }[]>
   friendlyError(e: unknown): string
+  /** Knowledge-base retrieval (SQL `kb_search`). Optional: without it the assistant only books. */
+  kb?(question: string): Promise<KbPassage[]>
+  /** Optional: phrase an answer from the retrieved passages with a language model (RAG "generate" step). */
+  kbAnswer?(question: string, passages: KbPassage[]): Promise<string | null>
   llm?(text: string, state: State, todayKey: string): Promise<{ intent?: Intent; slots?: Slots } | null>
   now?(): Date
 }
@@ -95,11 +101,12 @@ function summary(p: Proposal): string {
 const bot = (text: string, chips?: Chip[]): Msg => ({ role: 'bot', text, chips })
 
 export const WELCOME: Msg = bot(
-  'أهلاً! أنا مساعد الحجز. قولّي إنت عايز استشارة إمتى وأنا أشوف المواعيد وأجهّز لك الحجز. تقدر تكتب مثلاً: «عايز استشارة بكرة الساعة 5 العصر».',
+  'أهلاً! أنا مساعد مشورة. اسألني عن الحجز أو الدفع أو الإلغاء، أو قولّي عايز استشارة إمتى وأنا أشوف المواعيد وأجهّز لك الحجز. مثلاً: «عايز استشارة بكرة الساعة 5 العصر».',
   [
     { label: 'عايز استشارة بكرة', send: 'عايز استشارة بكرة' },
     { label: 'الأسعار', send: 'الأسعار' },
     { label: 'المواعيد المتاحة', send: 'ايه المواعيد المتاحة' },
+    { label: 'ازاي ادفع؟', send: 'ازاي ادفع؟' },
   ]
 )
 
@@ -131,6 +138,12 @@ export async function respond(prev: State, input: string, deps: Deps): Promise<{
   }
   if (intent === 'no') {
     return { state: { slots: {}, proposal: null, awaiting: null }, msgs: [bot('ولا يهمك. لو عايز تغيّر اليوم أو الساعة أو النوع قولّي، أو اختار من هنا.', [{ label: 'يوم تاني', send: 'عايز استشارة يوم تاني' }, { label: 'الأسعار', send: 'الأسعار' }])] }
+  }
+
+  // ── questions about how things work: answer from the knowledge base ────────
+  if (deps.kb && wantsKnowledge(intent, input, hasNew)) {
+    const answered = await answerFromKb(input, deps, state)
+    if (answered) return { state, msgs: answered }
   }
 
   // Not understood and nothing in progress: say what we can do instead of guessing.
@@ -227,6 +240,42 @@ export async function respond(prev: State, input: string, deps: Deps): Promise<{
     state: { ...state, slots: { ...state.slots, time: undefined } },
     msgs: [bot([...notes, `الساعة ${arTime(startIso)} مش متاحة ${dayLabel(date)} لمدة ${MIN_AR(minutes)}. أقرب مواعيد متاحة:`].join('\n'), near.map((iso) => ({ label: arTime(iso), send: `${dm(date)} ${hhmmOf(iso)}` })))],
   }
+}
+
+// ── knowledge base (retrieval-augmented answers) ─────────────────────────────
+const KB_FOUND = 0.5      // confident match: answer directly
+const KB_MAYBE = 0.3      // weak match: answer, but say it may not be what they meant
+const QUESTION_WORDS = /(^|\s)(ازاي|كيف|هل|ليه|لماذا|فين|ينفع|ممكن|الفرق|ايه|اقدر|هو|هي|امتي)(\s|$)/
+const REFUND_WORDS = /(فلوس|مبلغ|استرداد|ترجع|يرجع|رجوع|ارجاع|رد)/
+
+/** Should this message go to the knowledge base instead of the booking flow? */
+function wantsKnowledge(intent: Intent, input: string, hasNew: boolean): boolean {
+  if (hasNew) return false
+  const n = normalize(input)
+  if (intent === 'other' || intent === 'help') return true
+  if (intent === 'cancel') return REFUND_WORDS.test(n)
+  if (intent === 'book') return QUESTION_WORDS.test(n) || /[?؟]/.test(input)
+  return false
+}
+
+async function answerFromKb(question: string, deps: Deps, state: State): Promise<Msg[] | null> {
+  let hits: KbPassage[]
+  try { hits = await deps.kb!(question) } catch { return null }
+  const top = hits[0]
+  if (!top || top.score < KB_MAYBE) return null
+  const usable = hits.filter((h) => h.score >= KB_MAYBE)
+  let text = top.answer
+  if (deps.kbAnswer && top.score >= KB_FOUND) {
+    try { text = (await deps.kbAnswer(question, usable)) ?? text } catch { /* keep the article text */ }
+  }
+  if (top.score < KB_FOUND) text = `ممكن يكون ده اللي تقصده:\n${text}`
+
+  const chips: Chip[] = []
+  if (state.awaiting === 'confirm' && state.proposal) chips.push({ label: 'أيوه، أكّد الحجز', send: 'أيوه' })
+  if (top.category === 'الحجز') chips.push({ label: 'احجز دلوقتي', send: 'عايز استشارة بكرة' })
+  if (top.category === 'الإلغاء' || top.category === 'الدفع') chips.push(ACCOUNT)
+  for (const h of usable.slice(1, 3)) chips.push({ label: h.question.replace(/[؟?]\s*$/, ''), send: h.question })
+  return [bot(text, chips.length ? chips : undefined)]
 }
 
 function noSlotsThatDay(state: State, rows: OpenSlot[], minutes: number, now: Date, date: string, notes: string[]): { state: State; msgs: Msg[] } {

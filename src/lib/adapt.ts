@@ -51,10 +51,19 @@ export interface DisplayBooking extends Booking {
   paymentMethod: string | null
   paymentStatus: string | null
   invoiceNo: string | null
+  paymentRef: string | null
+  paymentSubmittedAt: string | null
+  paidAt: string | null
 }
 
-export const PAYMENT_METHOD_AR: Record<string, string> = { cash: 'كاش', wallet: 'محفظة موبايل', card: 'كارت بنكي' }
+export const PAYMENT_METHOD_AR: Record<string, string> = { cash: 'كاش', wallet: 'تحويل محفظة / إنستا باي', card: 'كارت بنكي' }
 export const PAYMENT_STATUS_AR: Record<string, string> = { pending: 'لم يُدفع بعد', paid: 'مدفوع', refunded: 'مرتجع', failed: 'لم يتم' }
+/** Payment status as the client should read it (a recorded transfer is "waiting for confirmation"). */
+export function paymentLabel(b: Pick<DisplayBooking, 'paymentStatus' | 'paymentMethod' | 'paymentSubmittedAt'>): string {
+  if (b.paymentStatus === 'pending' && b.paymentMethod === 'wallet' && b.paymentSubmittedAt) return 'بانتظار تأكيد التحويل'
+  if (b.paymentStatus === 'pending' && b.paymentMethod === 'cash') return 'كاش وقت الجلسة'
+  return PAYMENT_STATUS_AR[b.paymentStatus ?? ''] ?? '—'
+}
 export const MODE_AR: Record<string, string> = { video: 'مكالمة فيديو', audio: 'مكالمة صوتية', 'in-person': 'مقابلة وجهًا لوجه' }
 export const modeIconName = (m: string) => (m === 'video' ? 'video' : m === 'in-person' ? 'user' : 'phone')
 /** Still ahead of us: waiting for confirmation or confirmed. */
@@ -86,6 +95,9 @@ export function toDisplayBooking(row: any): DisplayBooking {
     paymentMethod: pay?.method ?? null,
     paymentStatus: pay?.status ?? null,
     invoiceNo: pay?.invoice_no ?? null,
+    paymentRef: pay?.provider_ref ?? null,
+    paymentSubmittedAt: pay?.submitted_at ?? null,
+    paidAt: pay?.paid_at ?? null,
   }
 }
 
