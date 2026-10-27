@@ -154,7 +154,7 @@ export function validStarts(rows: { id: string; starts_at: string }[], minutes: 
     if (!ok) continue
     const cairoMin = Number(new Date(r.starts_at).toLocaleString('en-GB', { minute: '2-digit', timeZone: CAIRO }))
     if (!fine && minutes > 15 && cairoMin % 30 !== 0) continue
-    out.push({ id: r.id, startsAt: r.starts_at })
+    out.push({ id: r.id, startsAt: new Date(r.starts_at).toISOString() }) // normalise: Postgres returns "+00:00", Date#toISOString gives "Z"
   }
   return out
 }
