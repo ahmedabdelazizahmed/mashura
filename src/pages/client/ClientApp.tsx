@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import ClientShell from './ClientShell'
-import Home from './Home'
 import { BookingFlow, ConfirmationView, ORDER, type Step } from './Booking'
 import Account from './Account'
 import { Toast } from '@/lib/ui'
@@ -11,7 +10,7 @@ import { useTypes } from '@/lib/hooks'
 import { toConsultationType } from '@/lib/adapt'
 import * as api from '@/lib/api'
 
-type View = 'home' | Step | 'done' | 'account'
+type View = Step | 'done' | 'account'
 
 // Fresh draft with the type preselected — used by deep links from landing/home.
 function draftFor(t: ConsultationType | null): BookingDraft {
@@ -27,7 +26,8 @@ export default function ClientApp() {
   const { data: typeRows } = useTypes()
   const types = (typeRows ?? []).map(toConsultationType)
 
-  const [view, setView] = useState<View>(params.get('view') === 'account' ? 'account' : 'home')
+  // Signed-in users land on their own dashboard; "home" (logo / الرئيسية) is the public landing page.
+  const [view, setView] = useState<View>('account')
   const [draft, setDraft] = useState<BookingDraft>(emptyDraft)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -55,7 +55,7 @@ export default function ClientApp() {
   })
   const back = () => setView((v) => {
     const i = ORDER.indexOf(v as Step)
-    return i >= 0 && i > 0 ? ORDER[i - 1] : 'home'
+    return i >= 0 && i > 0 ? ORDER[i - 1] : 'account'
   })
   const startBooking = (t: ConsultationType | null) => {
     setDraft(draftFor(t))
@@ -94,7 +94,8 @@ export default function ClientApp() {
   }
 
   const navHandler = (id: string) => {
-    if (id === 'catalog') startBooking(null)
+    if (id === 'home') nav('/')
+    else if (id === 'catalog') startBooking(null)
     else {
       setView(id as View)
       setParams({}, { replace: true })
@@ -122,7 +123,6 @@ export default function ClientApp() {
   return (
     <>
       <ClientShell view={view} onNav={onNav} signedIn={true}>
-        {view === 'home' && <Home onBook={() => startBooking(null)} onPickType={startBooking} />}
         {(ORDER as readonly string[]).includes(view) && (
           <BookingFlow step={view as Step} draft={draft} set={set} next={next} back={back} submitting={submitting} onConfirm={confirm} types={types} />
         )}

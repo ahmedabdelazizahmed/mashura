@@ -33,7 +33,8 @@ export default function Assistant() {
   const bodyRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const slotCache = useRef<{ at: number; rows: OpenSlot[] } | null>(null)
-  const resumed = useRef(false)
+  // True only when a booking proposal was made while signed out, so we can offer to finish it after sign-in.
+  const pendingSignIn = useRef(false)
 
   const visible = SHOW_ON.includes(pathname)
 
@@ -55,10 +56,13 @@ export default function Assistant() {
     lastUser.current = id
   }, [profile?.id])
 
-  // Back from sign-in with a pending booking: offer to finish it.
+  // Back from sign-in with a pending booking: offer to finish it (only if the proposal was made signed out).
   useEffect(() => {
-    if (resumed.current || !session || !state.proposal || state.awaiting !== 'confirm') return
-    resumed.current = true
+    if (!session && state.proposal && state.awaiting === 'confirm') pendingSignIn.current = true
+  }, [session, state.proposal, state.awaiting])
+  useEffect(() => {
+    if (!pendingSignIn.current || !session || !state.proposal || state.awaiting !== 'confirm') return
+    pendingSignIn.current = false
     const p = state.proposal
     setOpen(true)
     setMsgs((m) => [...m, { role: 'bot', text: `أهلاً بعودتك! لسه عايز تأكّد حجز ${p.typeTitle} يوم ${arDate(p.startsAt)} الساعة ${arTime(p.startsAt)} بسعر ${p.price} جنيه؟`, chips: [{ label: 'أيوه، أكّد الحجز', send: 'أيوه' }, { label: 'لا، غيّر', send: 'لا' }] }])
