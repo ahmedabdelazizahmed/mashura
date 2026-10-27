@@ -128,9 +128,15 @@ export async function createBooking(input: NewBookingInput) {
 }
 
 export async function getMyBookings() {
+  // Staff can read every booking under RLS, so this must filter by the signed-in user:
+  // "my bookings" means mine even for an admin account.
+  const { data: auth } = await supabase.auth.getSession()
+  const uid = auth.session?.user.id
+  if (!uid) return []
   const { data, error } = await supabase
     .from('bookings')
     .select('*, consultation_types(title, slug, category), payments(id, status, method, amount, invoice_no, paid_at, provider_ref, submitted_at)')
+    .eq('client_id', uid)
     .order('starts_at', { ascending: false })
   if (error) throw error
   return data ?? []
