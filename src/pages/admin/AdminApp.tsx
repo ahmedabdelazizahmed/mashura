@@ -633,13 +633,13 @@ function Clients() {
       {loading && <LoadingLine />}
       {error && <ErrorNote error={error} />}
       {!loading && !error && (
-        <Card padding="none">
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.6fr 1.1fr 1fr', gap: 'var(--space-6)', padding: 'var(--space-6) var(--space-7)', fontSize: 'var(--size-caption)', color: 'var(--text-subtle)' }}>
+        <Card padding="none" style={{ overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.6fr 1.1fr 1fr', gap: 'var(--space-6)', padding: 'var(--space-6) var(--space-7)', fontSize: 'var(--size-caption)', color: 'var(--text-subtle)', minWidth: 720 }}>
             <span>العميل</span><span>البريد الإلكتروني</span><span>الهاتف</span><span>تاريخ الانضمام</span>
           </div>
           {filtered.length === 0 && <p style={{ padding: 'var(--space-7)', color: 'var(--text-subtle)', fontSize: 'var(--size-body-sm)' }}>مفيش عملاء.</p>}
           {filtered.map((c: any) => (
-            <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.6fr 1.1fr 1fr', gap: 'var(--space-6)', alignItems: 'center', padding: 'var(--space-6) var(--space-7)', borderTop: '1px solid var(--border-subtle)' }}>
+            <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.6fr 1.1fr 1fr', gap: 'var(--space-6)', alignItems: 'center', padding: 'var(--space-6) var(--space-7)', borderTop: '1px solid var(--border-subtle)', minWidth: 720 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)' }}>
                 <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--pine-700)', color: 'var(--sand-050)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 'var(--weight-semibold)' }}>{c.name[0]}</span>
                 <span style={{ fontSize: 'var(--size-body-sm)', color: 'var(--text-title)', fontWeight: 'var(--weight-medium)' }}>{c.name}</span>
@@ -711,13 +711,13 @@ function Leads() {
             ...LEAD_STATUSES.map((s) => ({ value: s, label: s, count: byStatus[s] })),
           ]} style={{ marginBottom: 'var(--space-7)' }} />
 
-          <Card padding="none">
-            <div style={{ display: 'grid', gridTemplateColumns: '90px 1.3fr 1.1fr .9fr 1fr 1fr .9fr', gap: 'var(--space-6)', padding: 'var(--space-6) var(--space-7)', fontSize: 'var(--size-caption)', color: 'var(--text-subtle)' }}>
+          <Card padding="none" style={{ overflowX: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '90px 1.3fr 1.1fr .9fr 1fr 1fr .9fr', gap: 'var(--space-6)', padding: 'var(--space-6) var(--space-7)', fontSize: 'var(--size-caption)', color: 'var(--text-subtle)', minWidth: 880 }}>
               <span>الكود</span><span>الاسم</span><span>الاهتمام</span><span>المصدر</span><span>الهاتف</span><span>التاريخ</span><span>الحالة</span>
             </div>
             {filtered.length === 0 && <p style={{ padding: 'var(--space-9)', textAlign: 'center', color: 'var(--text-subtle)', fontSize: 'var(--size-body-sm)' }}>مفيش عملاء محتملين في هذا القسم.</p>}
             {filtered.map((l) => (
-              <div key={l.dbId} style={{ display: 'grid', gridTemplateColumns: '90px 1.3fr 1.1fr .9fr 1fr 1fr .9fr', gap: 'var(--space-6)', alignItems: 'center', padding: 'var(--space-6) var(--space-7)', borderTop: '1px solid var(--border-subtle)', cursor: 'pointer' }} onClick={() => setOpen(l)}>
+              <div key={l.dbId} style={{ display: 'grid', gridTemplateColumns: '90px 1.3fr 1.1fr .9fr 1fr 1fr .9fr', gap: 'var(--space-6)', alignItems: 'center', padding: 'var(--space-6) var(--space-7)', borderTop: '1px solid var(--border-subtle)', cursor: 'pointer', minWidth: 880 }} onClick={() => setOpen(l)}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--size-caption)', color: 'var(--text-subtle)' }}>{l.id}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)' }}>
                   <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--saffron-500)', color: 'var(--pine-950)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 'var(--weight-semibold)', flex: '0 0 auto' }}>{l.name[0]}</span>

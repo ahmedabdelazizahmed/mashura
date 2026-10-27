@@ -23,9 +23,18 @@ a:hover { color: var(--pine-900); }
 .adm-page { max-width: 1160px; margin: 0 auto; padding: var(--space-11); }
 .adm-two { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--space-7); margin-top: var(--space-10); align-items: start; }
 @media (max-width: 960px) {
-  .adm-shell { grid-template-columns: minmax(0, 1fr); }
-  .adm-side { position: static; flex-direction: column; padding: var(--space-6) var(--space-5) !important; gap: var(--space-6) !important; }
-  .adm-side nav { flex-direction: row !important; flex-wrap: wrap; }
+  .adm-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  /* Phones/tablets: the sidebar becomes a compact sticky bar — brand + account on one row, the menu as one scrollable strip. */
+  .adm-side { position: sticky; top: 0; z-index: 20; display: grid !important; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "brand user" "nav nav"; align-items: center; padding: 10px 12px 8px !important; gap: 8px 12px !important; box-shadow: 0 2px 10px rgba(0, 0, 0, .18); }
+  .adm-brand { grid-area: brand; flex-direction: row !important; align-items: center; gap: 10px !important; padding-inline-start: 0 !important; }
+  .adm-badge { display: none !important; }
+  .adm-user { grid-area: user; margin-top: 0 !important; padding-top: 0 !important; border-top: none !important; gap: 8px !important; }
+  .adm-user-name { display: none; }
+  .adm-nav { grid-area: nav; flex-direction: row !important; gap: 6px !important; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+  .adm-nav::-webkit-scrollbar { display: none; }
+  .adm-group { flex-direction: row !important; gap: 6px !important; flex: none; }
+  .adm-group-title { display: none; }
+  .adm-link { width: auto !important; flex: none; white-space: nowrap; padding: 8px 12px !important; gap: 6px !important; }
   .adm-page { padding: var(--space-8) 16px; }
   .adm-two { grid-template-columns: minmax(0, 1fr); }
 }

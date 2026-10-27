@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon, IconButton } from '@/lib/ui'
 import { useAuth } from '@/lib/auth'
@@ -41,28 +41,32 @@ export default function AdminShell({ view, onNav, children }: Props) {
   const { profile, signOut } = useAuth()
   const displayName = profile?.name ?? '—'
   const initial = (displayName[0] ?? 'أ').toUpperCase()
+  // On phones the menu is a scrollable strip: keep the current page's tab in view.
+  useEffect(() => {
+    document.querySelector('.adm-link[aria-current="page"]')?.scrollIntoView({ inline: 'center', block: 'nearest' })
+  }, [view])
   const doLogout = async () => { await signOut(); nav('/', { replace: true }) }
   return (
     <div className="adm-shell">
       <aside className="adm-side" style={{ background: 'var(--surface-inverse)', padding: 'var(--space-8) var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-9)' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', paddingInlineStart: 'var(--space-4)' }}>
+        <div className="adm-brand" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', paddingInlineStart: 'var(--space-4)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--weight-black)', fontSize: 24, color: 'var(--sand-050)' }}>مشورة</span>
             <span style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--pine-200)' }}>MASHURA</span>
           </div>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', padding: '4px 10px', borderRadius: 'var(--radius-pill)', background: 'var(--saffron-500)', color: 'var(--pine-950)', fontSize: 11, fontWeight: 'var(--weight-bold)', letterSpacing: '.04em' }}>
+          <span className="adm-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', padding: '4px 10px', borderRadius: 'var(--radius-pill)', background: 'var(--saffron-500)', color: 'var(--pine-950)', fontSize: 11, fontWeight: 'var(--weight-bold)', letterSpacing: '.04em' }}>
             <Icon name="shield-check" size={12} />
             لوحة الأدمن
           </span>
         </div>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-7)' }}>
+        <nav className="adm-nav" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-7)' }}>
           {NAV_GROUPS.map((g) => (
-            <div key={g.title} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              <div style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--pine-200)', opacity: 0.7, padding: '0 var(--space-5)', marginBottom: 4 }}>{g.title.toUpperCase()}</div>
+            <div key={g.title} className="adm-group" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              <div className="adm-group-title" style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--pine-200)', opacity: 0.7, padding: '0 var(--space-5)', marginBottom: 4 }}>{g.title.toUpperCase()}</div>
               {g.items.map((n) => {
                 const active = view === n.id
                 return (
-                  <button key={n.id} type="button" onClick={() => onNav(n.id)} style={{
+                  <button key={n.id} type="button" className="adm-link" aria-current={active ? 'page' : undefined} onClick={() => onNav(n.id)} style={{
                     display: 'flex', alignItems: 'center', gap: 'var(--space-5)', width: '100%',
                     border: 'none', cursor: 'pointer', textAlign: 'start',
                     padding: '10px var(--space-5)', borderRadius: 'var(--radius-md)',
@@ -80,9 +84,9 @@ export default function AdminShell({ view, onNav, children }: Props) {
             </div>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', paddingTop: 'var(--space-7)', borderTop: '1px solid var(--border-inverse)', display: 'flex', alignItems: 'center', gap: 'var(--space-5)' }}>
+        <div className="adm-user" style={{ marginTop: 'auto', paddingTop: 'var(--space-7)', borderTop: '1px solid var(--border-inverse)', display: 'flex', alignItems: 'center', gap: 'var(--space-5)' }}>
           <span style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--pine-600)', color: 'var(--sand-050)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'var(--weight-semibold)', fontSize: 14 }}>{initial}</span>
-          <span style={{ flex: 1, fontSize: 'var(--size-body-sm)', color: 'var(--sand-050)' }}>{displayName}</span>
+          <span className="adm-user-name" style={{ flex: 1, fontSize: 'var(--size-body-sm)', color: 'var(--sand-050)' }}>{displayName}</span>
           <IconButton icon="log-out" label="خروج" size="sm" style={{ color: 'var(--pine-200)' }} onClick={doLogout} />
         </div>
       </aside>
