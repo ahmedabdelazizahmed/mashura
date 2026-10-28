@@ -21,7 +21,7 @@ Online card payments through a gateway are **not** integrated yet (see [Roadmap]
 
 ## Screenshots
 
-Admin dashboard, bookings and payments (taken from the live deployment, with sample activity loaded from `supabase/seed-sample-data.sql`):
+Admin dashboard, bookings and payments (sample data from `supabase/seed-sample-data.sql`; names and e-mails are fictional):
 
 | Overview | Bookings |
 |---|---|
